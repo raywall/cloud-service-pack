@@ -30,16 +30,16 @@ func init() {
 	}
 
 	config := &graphql.Config{
-		Schema:     "aws:ssm:/graphql/dev/schema:false",
-		Connectors: "aws:ssm:/graphql/dev/connectors:false",
+		Schema:     "local::file::/Users/macmini/Documents/workspace/projetos/cloud-service-pack/examples/config/schema.json",
+		Connectors: "aws::ssm::/graphql/dev/connectors::false",
 		Route:      "/graphql",
 		Authorization: graphql.Authorization{
 			RequireTokenSTS: false,
 			TokenService: graphql.TokenService{
 				TokenAuthorizationURL: "https://sts.teste.net/api/oauth/token",
 				Credentials: graphql.Credentials{
-					ClientID:     "aws:secrets:/graphql/dev/credentials:json",
-					ClientSecret: "aws:secrets:/graphql/dev/credentials:json",
+					ClientID:     "aws::secrets::/graphql/dev/credentials::json",
+					ClientSecret: "aws::secrets::/graphql/dev/credentials::json",
 				},
 			},
 		},

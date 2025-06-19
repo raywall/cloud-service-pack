@@ -2,12 +2,15 @@ package connector
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/raywall/cloud-service-pack/go/data/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"gopkg.in/yaml.v3"
 )
 
 type mockS3Client struct {
@@ -51,8 +54,9 @@ func TestRetrieverS3ConfigValue(t *testing.T) {
 		// Verificar resultados
 		assert.NoError(t, err)
 
-		jsonResult, ok := result.(map[string]interface{})
-		assert.True(t, ok)
+		jsonResult := make(map[string]interface{})
+		_ = json.Unmarshal([]byte(*result), &jsonResult)
+
 		assert.Equal(t, "test", jsonResult["name"])
 		assert.Equal(t, float64(123), jsonResult["value"])
 	})
@@ -77,8 +81,9 @@ list:
 		// Verificar resultados
 		assert.NoError(t, err)
 
-		yamlResult, ok := result.(map[string]interface{})
-		assert.True(t, ok)
+		yamlResult := make(map[string]interface{})
+		_ = yaml.Unmarshal([]byte(*result), &yamlResult)
+
 		assert.Equal(t, "test", yamlResult["name"])
 		assert.Equal(t, 123, yamlResult["value"])
 	})
@@ -101,7 +106,9 @@ list:
 		// Verificar resultados
 		assert.NoError(t, err)
 
-		csvResult, ok := result.([]map[string]string)
+		data, _ := types.ParseStringToCSV(*result)
+		csvResult, ok := data.([]map[string]interface{})
+
 		assert.True(t, ok)
 		assert.Len(t, csvResult, 2)
 		assert.Equal(t, "Alice", csvResult[0]["name"])
@@ -124,9 +131,6 @@ list:
 
 		// Verificar resultados
 		assert.NoError(t, err)
-
-		textResult, ok := result.(string)
-		assert.True(t, ok)
-		assert.Equal(t, textContent, textResult)
+		assert.Equal(t, textContent, *result)
 	})
 }

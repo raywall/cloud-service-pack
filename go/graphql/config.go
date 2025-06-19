@@ -1,7 +1,6 @@
 package graphql
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -66,7 +65,7 @@ func (c *Config) GetSchemaValue() (string, error) {
 		return "", fmt.Errorf("it's necessary to specify the GraphQL API schema")
 	}
 
-	if IsPath(c.Schema) {
+	if data.IsConfig(c.Schema) {
 		cfg, err := data.ParseConfig(c.Schema)
 		if err != nil {
 			return "", fmt.Errorf("failed to get inline configuration of schema: %v", err)
@@ -75,11 +74,7 @@ func (c *Config) GetSchemaValue() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to get the schema value: %v", err)
 		}
-		data, err := json.Marshal(value)
-		if err != nil {
-			return "", fmt.Errorf("failed to deserialize the schema data: %v", err)
-		}
-		return string(data), nil
+		return string(value), nil
 	}
 
 	return c.Schema, nil
@@ -91,7 +86,7 @@ func (c *Config) GetConnectorsValue() (string, error) {
 		return "", fmt.Errorf("it's necessary to specify the GraphQL API connections")
 	}
 
-	if IsPath(c.Connectors) {
+	if data.IsConfig(c.Connectors) {
 		cfg, err := data.ParseConfig(c.Connectors)
 		if err != nil {
 			return "", fmt.Errorf("failed to get inline configuration of connectors: %v", err)
@@ -100,11 +95,7 @@ func (c *Config) GetConnectorsValue() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to get the connectors value: %v", err)
 		}
-		data, err := json.Marshal(value)
-		if err != nil {
-			return "", fmt.Errorf("failed to deserialize the connectors data: %v", err)
-		}
-		return string(data), nil
+		return string(value), nil
 	}
 
 	return c.Connectors, nil
@@ -112,7 +103,7 @@ func (c *Config) GetConnectorsValue() (string, error) {
 
 func (c *Config) GetTokenServiceURL() (string, error) {
 	authService := c.Authorization.TokenService.TokenAuthorizationURL
-	if IsPath(authService) {
+	if data.IsConfig(authService) {
 		cfg, err := data.ParseConfig(authService)
 		if err != nil {
 			return "", fmt.Errorf("failed to get inline configuration of authorization service url: %v", err)
@@ -121,7 +112,7 @@ func (c *Config) GetTokenServiceURL() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to get the authorization service value: %v", err)
 		}
-		authService = value["data"].(string)
+		return string(value), nil
 	}
 
 	return authService, nil
@@ -129,7 +120,7 @@ func (c *Config) GetTokenServiceURL() (string, error) {
 
 func (c *Config) GetCredentials() (string, string, error) {
 	clientID := c.Authorization.TokenService.Credentials.ClientID
-	if IsPath(clientID) {
+	if data.IsConfig(clientID) {
 		cfg, err := data.ParseConfig(clientID)
 		if err != nil {
 			return "", "", fmt.Errorf("failed to get inline configuration of authorization client id: %v", err)
@@ -138,11 +129,15 @@ func (c *Config) GetCredentials() (string, string, error) {
 		if err != nil {
 			return "", "", fmt.Errorf("failed to get the authorization client id: %v", err)
 		}
-		clientID = value["client_id"].(string)
+		data, err := value.CastTo(data.JSON)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to get the authorization client id: %v", err)
+		}
+		clientID = ((data.(map[string]interface{}))["client_id"]).(string)
 	}
 
 	clientSecret := c.Authorization.TokenService.Credentials.ClientSecret
-	if IsPath(clientSecret) {
+	if data.IsConfig(clientSecret) {
 		cfg, err := data.ParseConfig(clientID)
 		if err != nil {
 			return "", "", fmt.Errorf("failed to get inline configuration of authorization client secret: %v", err)
@@ -151,7 +146,11 @@ func (c *Config) GetCredentials() (string, string, error) {
 		if err != nil {
 			return "", "", fmt.Errorf("failed to get the authorization client secret: %v", err)
 		}
-		clientSecret = value["client_secret"].(string)
+		data, err := value.CastTo(data.JSON)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to get the authorization client secret: %v", err)
+		}
+		clientSecret = ((data.(map[string]interface{}))["client_secret"]).(string)
 	}
 
 	return clientID, clientSecret, nil

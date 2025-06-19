@@ -9,7 +9,7 @@ import (
 
 func TestRetrieverInlineConfig(t *testing.T) {
 	t.Run("Configuração inline do serviço SSM da AWS", func(t *testing.T) {
-		inlineConfig := "aws:ssm:/path/to/parameter:true:SGVsbG8="
+		inlineConfig := "aws::ssm::/path/to/parameter::true::SGVsbG8="
 
 		expected := &types.Config{
 			Provider:     types.AWS,
@@ -26,7 +26,7 @@ func TestRetrieverInlineConfig(t *testing.T) {
 	})
 
 	t.Run("Configuração inline do serviço SecretsManager da AWS", func(t *testing.T) {
-		inlineConfig := "aws:secrets:/path/to/secret:json:SGVsbG8gd29ybGQ="
+		inlineConfig := "aws::secrets::/path/to/secret::json::SGVsbG8gd29ybGQ="
 
 		expected := &types.Config{
 			Provider:     types.AWS,
@@ -43,7 +43,7 @@ func TestRetrieverInlineConfig(t *testing.T) {
 	})
 
 	t.Run("Configuração inline do serviço S3 da AWS", func(t *testing.T) {
-		inlineConfig := "aws:s3:my-bucket:file.txt:SGVsbG8="
+		inlineConfig := "aws::s3::my-bucket::file.txt::SGVsbG8="
 
 		expected := &types.Config{
 			Provider:     types.AWS,
@@ -60,7 +60,7 @@ func TestRetrieverInlineConfig(t *testing.T) {
 	})
 
 	t.Run("Configuração inline inválida do serviço SSM da AWS", func(t *testing.T) {
-		inlineConfig := "aws:ssm:invalid::SGVsbG8="
+		inlineConfig := "aws::ssm::invalid:::SGVsbG8="
 
 		_, err := ParseConfig(inlineConfig)
 		assert.Error(t, err)

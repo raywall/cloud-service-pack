@@ -50,7 +50,7 @@ func TestSecretsManagerCloudContext_GetValue(t *testing.T) {
 
 		// Verificar resultados
 		assert.NoError(t, err)
-		assert.Equal(t, secretValue, result)
+		assert.Equal(t, secretValue, *result)
 	})
 
 	t.Run("Get JSON secret", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestSecretsManagerCloudContext_GetValue(t *testing.T) {
 		assert.NoError(t, err)
 
 		jsonResult := make(map[string]interface{})
-		err = json.Unmarshal(result.([]byte), &jsonResult)
+		err = json.Unmarshal([]byte(*result), &jsonResult)
 
 		assert.NoError(t, err)
 

@@ -1,7 +1,6 @@
 package connector
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -26,7 +25,7 @@ func NewSecretsManagerContext(sess *session.Session) *SecretsManagerCloudContext
 }
 
 // GetValue obtém e processa o segredo do Secrets Manager
-func (ctx *SecretsManagerCloudContext) GetValue(secretName, secretType string) (interface{}, error) {
+func (ctx *SecretsManagerCloudContext) GetValue(secretName, secretType string) (*string, error) {
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
 	}
@@ -43,16 +42,5 @@ func (ctx *SecretsManagerCloudContext) GetValue(secretName, secretType string) (
 		return nil, errors.New("binary secret is not supported")
 	}
 
-	switch secretType {
-	case "text":
-		return secretValue, nil
-	case "json":
-		var jsonData map[string]interface{}
-		if err := json.Unmarshal([]byte(secretValue), &jsonData); err != nil {
-			return nil, fmt.Errorf("error when analyzing secret JSON: %w", err)
-		}
-		return []byte(secretValue), nil
-	default:
-		return secretValue, nil
-	}
+	return &secretValue, nil
 }

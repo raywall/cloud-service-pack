@@ -51,6 +51,6 @@ func TestSSMCloudContext_GetValue(t *testing.T) {
 
 		// Verificar resultados
 		assert.NoError(t, err)
-		assert.Equal(t, paramValue, result)
+		assert.Equal(t, paramValue, *result)
 	})
 }

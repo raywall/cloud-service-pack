@@ -24,7 +24,7 @@ func NewSSMContext(sess *session.Session) *SSMCloudContext {
 }
 
 // GetValue obtém o valor do parâmetro SSM
-func (ctx *SSMCloudContext) GetValue(parameterName string, withDecryption bool) (interface{}, error) {
+func (ctx *SSMCloudContext) GetValue(parameterName string, withDecryption bool) (*string, error) {
 	input := &ssm.GetParameterInput{
 		Name:           aws.String(parameterName),
 		WithDecryption: aws.Bool(withDecryption),
@@ -34,5 +34,5 @@ func (ctx *SSMCloudContext) GetValue(parameterName string, withDecryption bool) 
 	if err != nil {
 		return nil, fmt.Errorf("error when obtaining SSM parameters: %w", err)
 	}
-	return *result.Parameter.Value, nil
+	return result.Parameter.Value, nil
 }

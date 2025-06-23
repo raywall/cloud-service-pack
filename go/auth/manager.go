@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func NewManagedToken(apiURL string, authRequest AuthRequest, certSkipVerify bool) *TokenManager {
+func NewManagedToken(apiURL string, authRequest AuthRequest, certSkipVerify bool, accessToken *string) *TokenManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
@@ -28,6 +28,7 @@ func NewManagedToken(apiURL string, authRequest AuthRequest, certSkipVerify bool
 
 	return &TokenManager{
 		apiURL:      apiURL,
+		accessToken: *string,
 		authRequest: authRequest,
 		client:      httpClient,
 		ctx:         ctx,
@@ -55,7 +56,7 @@ func (tm *TokenManager) GetToken() (string, error) {
 	defer tm.mutex.RUnlock()
 
 	// Verifica se temos um token e se ele ainda é válido
-	if tm.token == "" {
+	if tm.accessToken == nil {
 		return "", errors.New("token não disponível")
 	}
 
@@ -66,7 +67,7 @@ func (tm *TokenManager) GetToken() (string, error) {
 		log.Println("Token está próximo de expiração, mas ainda é válido")
 	}
 
-	return tm.token, nil
+	return tm.accessToken, nil
 }
 
 // Stop interrompe o gerenciador de token
@@ -174,7 +175,7 @@ func (tm *TokenManager) RefreshToken() error {
 
 	// Atualizar o token com lock para thread safety
 	tm.mutex.Lock()
-	tm.token = tokenResp.Token
+	tm.accessToken = tokenResp.Token
 	tm.expiresAt = time.Now().Add(time.Duration(tokenResp.ExpiresAt) * time.Second)
 	tm.mutex.Unlock()
 

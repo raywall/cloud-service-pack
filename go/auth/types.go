@@ -19,7 +19,7 @@ type TokenManager struct {
 	authRequest AuthRequest
 	client      *http.Client
 
-	token     string
+	accessToken  *string
 	expiresAt time.Time
 	mutex     sync.RWMutex
 

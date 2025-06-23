@@ -30,12 +30,12 @@ func New(config *Config, resources *cloud.CloudContextList, region, endpoint str
 	)
 
 	// metrics validation
-	if config.Metrics == nil {
-		return nil, fmt.Errorf("it's necessary to inform the metrics platform that will be used to register the metrics")
-	}
+	// if config.Metrics == nil {
+	// 	return nil, fmt.Errorf("it's necessary to inform the metrics platform that will be used to register the metrics")
+	// }
 
 	// basic config validation
-	if config.BasicData == nil || config.BasicData.Team == "" || config.BasicData.Domain = "" || config.BasicData.Product == "" || config.BasicData.Solution == "" {
+	if config.BasicData == nil || config.BasicData.Team == "" || config.BasicData.Domain == "" || config.BasicData.Product == "" || config.BasicData.Solution == "" {
 		return nil, fmt.Errorf("it's necessary to inform the basic information to use this library")
 	}
 

@@ -67,7 +67,7 @@ type Config struct {
 	Authorization Authorization
 
 	// BasicData is the basic information necessary to register the library observability
-	BasicData Basic `json:"basic"`
+	BasicData *Basic `json:"basic"`
 
 	// CloudContext is the cloud context that will be used to interact with available cloud resources
 	CloudContext cloud.CloudContext
@@ -169,7 +169,7 @@ func (c *Config) GetCredentials() (string, string, error) {
 
 	clientSecret := c.Authorization.TokenService.Credentials.ClientSecret
 	if data.IsConfig(clientSecret) {
-		cfg, err := data.ParseConfig(clientID)
+		cfg, err := data.ParseConfig(clientSecret)
 		if err != nil {
 			return "", "", fmt.Errorf("failed to get inline configuration of authorization client secret: %v", err)
 		}

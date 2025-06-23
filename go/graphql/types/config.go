@@ -1,18 +1,19 @@
-package graphql
+package types
 
 import (
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/raywall/cloud-easy-connector/pkg/cloud"
+	"github.com/raywall/cloud-service-pack/go/auth"
 	"github.com/raywall/cloud-service-pack/go/data"
 )
 
-type MetricType int
+type MetricCollectorType int
 
 const (
-	Datadog MetricType = iota
-	OpenTelemetry
+	DatadogCollector MetricCollectorType = iota
+	OpenTelemetryCollector
 )
 
 // Basic represents the basic config necessary to the graphql observability
@@ -77,7 +78,7 @@ type Config struct {
 	Connectors string `json:"connectors"`
 
 	// Metrics indicates the metrics platform that will be used by the GraphQL Datadog or OpenTelemetry
-	Metrics MetricType `json:"metrics"`
+	Metrics MetricCollectorType `json:"metrics"`
 
 	// Route represents the route that will be used by the GraphQL API (e.g. /graphql)
 	Route string `json:"route"`
@@ -88,6 +89,12 @@ type Config struct {
 
 	// Session is a AWS Session used by the service to interact with the cloud
 	Session *session.Session
+
+	// TokenManager is a auto managed token, responsable for manage and mantains the token always updated
+	TokenManager *auth.TokenManager
+
+	// AccessToken is the access token updated by the TokenManager
+	AccessToken string
 }
 
 // GetSchemaValue is the method responsible for retrieving the schema settings from the GraphQL API

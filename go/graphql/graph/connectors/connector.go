@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/raywall/cloud-service-pack/go/adapters"
+	"github.com/raywall/cloud-service-pack/go/graphql/types"
 )
 
 type ConnectorConfig struct {
@@ -20,7 +21,7 @@ type Config struct {
 }
 
 type Connector interface {
-	GetData(codigoConvenio int) (map[string]interface{}, error)
+	GetData(args map[string]interface{}) (interface{}, error)
 }
 
 type connector struct {
@@ -28,13 +29,20 @@ type connector struct {
 	keyPattern string
 }
 
-func NewConnector(config ConnectorConfig) (Connector, error) {
+func NewConnector(cfg *types.Config, config ConnectorConfig) (Connector, error) {
 	var adapter adapters.Adapter
+	attributes := config.AdapterConfig["attr"].(map[string]interface{})
+
 	switch config.Adapter {
 	case "redis":
 		endpoint, _ := config.AdapterConfig["endpoint"].(string)
 		password, _ := config.AdapterConfig["password"].(string)
-		adapter = adapters.NewRedisAdapter(endpoint, password)
+		adapter = adapters.NewRedisAdapter(endpoint, password, config.KeyPattern, attributes)
+
+	case "rest":
+		baseUrl, _ := config.AdapterConfig["baseUrl"].(string)
+		endpoint, _ := config.AdapterConfig["endpoint"].(string)
+		adapter = adapters.NewRestAdapter(baseUrl, endpoint, auth, attributes)
 
 	case "s3":
 		region, _ := config.AdapterConfig["region"].(string)
@@ -50,11 +58,6 @@ func NewConnector(config ConnectorConfig) (Connector, error) {
 		secretAccessKey, _ := config.AdapterConfig["secretAccessKey"].(string)
 		adapter = adapters.NewDynamoDBAdapter(region, table, accessKeyId, secretAccessKey)
 
-	case "rest":
-		baseUrl, _ := config.AdapterConfig["baseUrl"].(string)
-		endpoint, _ := config.AdapterConfig["endpoint"].(string)
-		adapter = adapters.NewRestAdapter(baseUrl, endpoint)
-
 	default:
 		return nil, fmt.Errorf("unsupported adapter: %s", config.Adapter)
 	}
@@ -65,12 +68,15 @@ func NewConnector(config ConnectorConfig) (Connector, error) {
 	}, nil
 }
 
-func (c *connector) GetData(codigoConvenio int) (map[string]interface{}, error) {
-	key := strings.Replace(c.keyPattern, "{codigoConvenio}", fmt.Sprintf("%d", codigoConvenio), 1)
-	return c.adapter.GetData(key)
+func (c *connector) GetData(args map[string]interface{}) (interface{}, error) {
+	if params, err := c.adapter.GetParameters(args); err != nil {
+		return nil, err
+	} else {
+		return c.adapter.GetData(params)
+	}
 }
 
-func LoadConnectors(connectorConfig string) (map[string]Connector, error) {
+func LoadConnectors(cfg *types.Config, connectorConfig string) (map[string]Connector, error) {
 	var config Config
 	if err := json.Unmarshal([]byte(connectorConfig), &config); err != nil {
 		return nil, fmt.Errorf("error parsing connectors config: %v", err)
@@ -78,7 +84,7 @@ func LoadConnectors(connectorConfig string) (map[string]Connector, error) {
 
 	connectors := make(map[string]Connector)
 	for _, connConfig := range config.Connectors {
-		conn, err := NewConnector(connConfig)
+		conn, err := NewConnector(cfg, connConfig)
 		if err != nil {
 			return nil, fmt.Errorf("error creating connector for %s: %v", connConfig.Field, err)
 		}

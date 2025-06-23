@@ -7,9 +7,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	gp "github.com/graphql-go/graphql"
 
-	"github.com/raywall/cloud-easy-connector/pkg/auth"
-	"github.com/raywall/cloud-easy-connector/pkg/cloud"
+	"github.com/raywall/cloud-service-pack/go/auth"
 	"github.com/raywall/cloud-service-pack/go/graphql/graph"
+	"github.com/raywall/cloud-service-pack/go/graphql/types"
 )
 
 // route is the API route name that will be used by default
@@ -18,12 +18,12 @@ const route string = "/graphql"
 type GraphQL struct {
 	tokenManager auth.AutoManagedToken `json:"-"`
 	AccessToken  *string               `json:"token"`
-	Config       Config                `json:"config"`
+	Config       types.Config                `json:"config"`
 	Resolver     *graph.Resolver       `json:"resolver"`
 	Schema       *gp.Schema            `json:"schema"`
 }
 
-func New(config *Config, resources *cloud.CloudContextList, region, endpoint string) (*GraphQL, error) {
+func New(config *types.Config, resources *cloud.CloudContextList, region, endpoint string) (*GraphQL, error) {
 	var (
 		err error
 		api = GraphQL{}
@@ -71,7 +71,7 @@ func New(config *Config, resources *cloud.CloudContextList, region, endpoint str
 		return nil, fmt.Errorf("failed to get the connections config: %v", err)
 	}
 
-	res, err := graph.NewResolver(connectionsConfig)
+	res, err := graph.NewResolver(config, connectionsConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a resolver: %v", err)
 	}
@@ -102,11 +102,14 @@ func New(config *Config, resources *cloud.CloudContextList, region, endpoint str
 			return nil, err
 		}
 
-		config.CloudContext.NewAutoManagedToken(
+		config.TokenManager = auth.NewTokenManager(
 			authServiceUrl,
-			clientID,
-			clientSecret,
-			false)
+			auth.AuthRequest{
+				ClientID: clientID,
+				ClientSecret: clientSecret,
+			},
+			false,
+		&config.AccessToken)
 	}
 
 	return &api, nil

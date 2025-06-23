@@ -11,12 +11,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-type DynamoDBAdapter struct {
+type DynamoDBAdapter interface {
+	Adapter
+}
+
+type dynamoDBAdapter struct {
 	client *dynamodb.Client
 	table  string
 }
 
-func NewDynamoDBAdapter(region, table, accessKeyId, secretAccessKey string) Adapter {
+func NewDynamoDBAdapter(region, table, accessKeyId, secretAccessKey string) DynamoDBAdapter {
 	cfg, err := config.LoadDefaultConfig(context.Background(),
 		config.WithRegion(region),
 		config.WithCredentialsProvider(aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
@@ -30,13 +34,13 @@ func NewDynamoDBAdapter(region, table, accessKeyId, secretAccessKey string) Adap
 		panic(fmt.Errorf("failed to load AWS config: %v", err))
 	}
 
-	return &DynamoDBAdapter{
+	return &dynamoDBAdapter{
 		client: dynamodb.NewFromConfig(cfg),
 		table:  table,
 	}
 }
 
-func (d *DynamoDBAdapter) GetData(key string) (map[string]interface{}, error) {
+func (d *dynamoDBAdapter) GetData(key string) (interface{}, error) {
 	result, err := d.client.GetItem(context.Background(), &dynamodb.GetItemInput{
 		TableName: aws.String(d.table),
 		Key: map[string]types.AttributeValue{
@@ -55,4 +59,8 @@ func (d *DynamoDBAdapter) GetData(key string) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("failed to unmarshal DynamoDB item %s: %v", key, err)
 	}
 	return data, nil
+}
+
+func (r *dynamoDBAdapter) GetParameters(args map[string]interface{}) ([]AdapterAttribute, error) {
+	return getParameters(r.attr, args)
 }

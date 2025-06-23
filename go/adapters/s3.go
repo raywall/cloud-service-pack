@@ -10,12 +10,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-type S3Adapter struct {
+type S3Adapter interface {
+	Adapter
+}
+
+type s3Adapter struct {
 	client *s3.Client
 	bucket string
 }
 
-func NewS3Adapter(region, bucket, accessKeyId, secretAccessKey string) Adapter {
+func NewS3Adapter(region, bucket, accessKeyId, secretAccessKey string) S3Adapter {
 	cfg, err := config.LoadDefaultConfig(context.Background(),
 		config.WithRegion(region),
 		config.WithCredentialsProvider(aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
@@ -29,13 +33,13 @@ func NewS3Adapter(region, bucket, accessKeyId, secretAccessKey string) Adapter {
 		panic(fmt.Errorf("failed to load AWS config: %v", err))
 	}
 
-	return &S3Adapter{
+	return &s3Adapter{
 		client: s3.NewFromConfig(cfg),
 		bucket: bucket,
 	}
 }
 
-func (s *S3Adapter) GetData(key string) (map[string]interface{}, error) {
+func (s *s3Adapter) GetData(key string) (interface{}, error) {
 	result, err := s.client.GetObject(context.Background(), &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(key),
@@ -50,4 +54,8 @@ func (s *S3Adapter) GetData(key string) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("failed to decode S3 object %s: %v", key, err)
 	}
 	return data, nil
+}
+
+func (r *s3Adapter) GetParameters(args map[string]interface{}) ([]AdapterAttribute, error) {
+	return getParameters(r.attr, args)
 }

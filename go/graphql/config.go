@@ -8,6 +8,31 @@ import (
 	"github.com/raywall/cloud-service-pack/go/data"
 )
 
+type MetricType int
+
+const (
+	Datadog MetricType = iota
+	OpenTelemetry
+)
+
+// Basic represents the basic config necessary to the graphql observability
+type Basic struct {
+	// Team indicates the name of the team/squad responsable for this service
+	Team string `json:"team"`
+
+	// Solution indicates the name of the solution/application
+	Solution string `json:"solution"`
+
+	// Domain indicates the domain of the solution (DDD)
+	Domain string `json:"domain"`
+
+	// Product indicates the name of the product responsable for this service
+	Product string `json:"product"`
+
+	// Tags is an additional field to create custom tags not covered by the default object
+	Tags map[string]string `json:"tags"`
+}
+
 // Credentials represents the credentials that will be used to generate a new token
 type Credentials struct {
 	// ClientID indicates the registered client application id
@@ -38,22 +63,28 @@ type Authorization struct {
 
 // Config contains all the configuration required to create and instantiate a dynamic GraphQL API
 type Config struct {
-	// Schema is the content or path to retrieve the schema settings of the GraphQL API that will be
-	// created dynamically
-	Schema string `json:"schema"`
+	// Authorization contains the authorization settings to be used by GraphQL API connectors
+	Authorization Authorization
+
+	// BasicData is the basic information necessary to register the library observability
+	BasicData Basic `json:"basic"`
+
+	// CloudContext is the cloud context that will be used to interact with available cloud resources
+	CloudContext cloud.CloudContext
 
 	// Connectors is the content or path to retrieve settings from the GraphQL API resolver that will
 	// be created dynamically
 	Connectors string `json:"connectors"`
 
+	// Metrics indicates the metrics platform that will be used by the GraphQL Datadog or OpenTelemetry
+	Metrics MetricType `json:"metrics"`
+
 	// Route represents the route that will be used by the GraphQL API (e.g. /graphql)
 	Route string `json:"route"`
 
-	// Authorization contains the authorization settings to be used by GraphQL API connectors
-	Authorization Authorization
-
-	// CloudContext is the cloud context that will be used to interact with available cloud resources
-	CloudContext cloud.CloudContext
+	// Schema is the content or path to retrieve the schema settings of the GraphQL API that will be
+	// created dynamically
+	Schema string `json:"schema"`
 
 	// Session is a AWS Session used by the service to interact with the cloud
 	Session *session.Session

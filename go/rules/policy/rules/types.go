@@ -9,11 +9,11 @@ type RuleExecutionResultBackup struct {
 
 // Policy e Context permanecem iguais ao código anterior
 type Policy struct {
-    Name  string   `yaml:"name"`
-    Rules []string `yaml:"rules"`
+	Name  string   `yaml:"name"`
+	Rules []string `yaml:"rules"`
 }
 
 type Context struct {
-    Data map[string]interface{}
-    Vars map[string]interface{}
+	Data map[string]interface{}
+	Vars map[string]interface{}
 }

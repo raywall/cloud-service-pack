@@ -1,13 +1,13 @@
 package rules
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
-	"reflect"
-	"encoding/json"
 )
 
 // evaluateRule avalia uma única string de regra de política contra os dados.
@@ -205,192 +205,192 @@ func EvaluateRule(rule string, data map[string]interface{}) (bool, string, error
 
 // evaluateExpression avalia expressões YAML (ex.: $.idade >= 18).
 func evaluateExpression(data map[string]interface{}, expr string) (bool, error) {
-    parts := strings.Split(expr, " ")
-    if len(parts) < 3 {
-        return false, fmt.Errorf("invalid expression: %s", expr)
-    }
+	parts := strings.Split(expr, " ")
+	if len(parts) < 3 {
+		return false, fmt.Errorf("invalid expression: %s", expr)
+	}
 
-    left, op, right := parts[0], parts[1], strings.Join(parts[2:], " ")
-    leftVal, err := getValue(data, left)
-    if err != nil {
-        return false, err
-    }
+	left, op, right := parts[0], parts[1], strings.Join(parts[2:], " ")
+	leftVal, err := getValue(data, left)
+	if err != nil {
+		return false, err
+	}
 
-    rightVal, err := parseValue(right, leftVal)
-    if err != nil {
-        return false, err
-    }
+	rightVal, err := parseValue(right, leftVal)
+	if err != nil {
+		return false, err
+	}
 
-    switch op {
-    case "==":
-        return reflect.DeepEqual(leftVal, rightVal), nil
-    case ">=":
-        return compareNumbers(leftVal, rightVal, ">=")
-    case ">":
-        return compareNumbers(leftVal, rightVal, ">")
-    case "<=":
-        return compareNumbers(leftVal, rightVal, "<=")
-    case "<":
-        return compareNumbers(leftVal, rightVal, "<")
-    case "IN":
-        return inArray(leftVal, rightVal)
-    case "MATCHES":
-        return matches(leftVal, rightVal)
-    default:
-        return false, fmt.Errorf("unsupported operator: %s", op)
-    }
+	switch op {
+	case "==":
+		return reflect.DeepEqual(leftVal, rightVal), nil
+	case ">=":
+		return compareNumbers(leftVal, rightVal, ">=")
+	case ">":
+		return compareNumbers(leftVal, rightVal, ">")
+	case "<=":
+		return compareNumbers(leftVal, rightVal, "<=")
+	case "<":
+		return compareNumbers(leftVal, rightVal, "<")
+	case "IN":
+		return inArray(leftVal, rightVal)
+	case "MATCHES":
+		return matches(leftVal, rightVal)
+	default:
+		return false, fmt.Errorf("unsupported operator: %s", op)
+	}
 }
 
 // matches valida uma string contra uma expressão regular.
 func matches(val, pattern interface{}) (bool, error) {
-    str, ok := val.(string)
-    if !ok {
-        return false, fmt.Errorf("value %v is not a string", val)
-    }
-    pat, ok := pattern.(string)
-    if !ok {
-        return false, fmt.Errorf("pattern %v is not a string", pattern)
-    }
-    matched, err := regexp.MatchString(strings.Trim(pat, `"`), str)
-    if err != nil {
-        return false, fmt.Errorf("invalid regex pattern: %s", pat)
-    }
-    return matched, nil
+	str, ok := val.(string)
+	if !ok {
+		return false, fmt.Errorf("value %v is not a string", val)
+	}
+	pat, ok := pattern.(string)
+	if !ok {
+		return false, fmt.Errorf("pattern %v is not a string", pattern)
+	}
+	matched, err := regexp.MatchString(strings.Trim(pat, `"`), str)
+	if err != nil {
+		return false, fmt.Errorf("invalid regex pattern: %s", pat)
+	}
+	return matched, nil
 }
 
 // evaluatePolicy avalia uma política YAML.
 func evaluatePolicy(data map[string]interface{}, policy Policy) (bool, error) {
-    for _, rule := range policy.Rules {
-        if strings.HasPrefix(rule, "SET ") {
-            parts := strings.SplitN(rule, "=", 2)
-            if len(parts) != 2 {
-                return false, fmt.Errorf("invalid SET rule: %s", rule)
-            }
-            path := strings.TrimSpace(strings.Split(parts[0], " ")[1])
-            expr := strings.TrimSpace(parts[1])
-            if strings.HasPrefix(expr, "EXP(") {
-                expr = strings.TrimSuffix(strings.TrimPrefix(expr, "EXP("), ")")
-                parts := strings.Split(expr, "*")
-                if len(parts) != 2 {
-                    return false, fmt.Errorf("invalid EXP expression: %s", expr)
-                }
-                val, err := getValue(data, strings.TrimSpace(parts[0]))
-                if err != nil {
-                    return false, err
-                }
-                numVal, ok := val.(float64)
-                if !ok {
-                    return false, fmt.Errorf("invalid number in EXP: %v", val)
-                }
-                multiplier, err := parseFloat(strings.TrimSpace(parts[1]))
-                if err != nil {
-                    return false, err
-                }
-                if err := setValue(data, path, numVal*multiplier); err != nil {
-                    return false, err
-                }
-            } else if strings.HasPrefix(expr, "MAX(") || strings.HasPrefix(expr, "MIN(") ||
-                strings.HasPrefix(expr, "AVERAGE(") || strings.HasPrefix(expr, "SUM(") ||
-                strings.HasPrefix(expr, "COUNT(") {
-                op := strings.Split(expr, "(")[0]
-                pathExpr := strings.TrimSuffix(strings.Split(expr, "(")[1], ")")
-                result, err := arrayOperation(data, op, pathExpr)
-                if err != nil {
-                    return false, err
-                }
-                if err := setValue(data, path, result); err != nil {
-                    return false, err
-                }
-            } else {
-                val, err := parseValue(expr, nil)
-                if err != nil {
-                    return false, err
-                }
-                if err := setValue(data, path, val); err != nil {
-                    return false, err
-                }
-            }
-        } else if strings.HasPrefix(rule, "IF ") {
-            parts := strings.SplitN(rule, " THEN ", 2)
-            if len(parts) != 2 {
-                return false, fmt.Errorf("invalid IF rule: %s", rule)
-            }
-            condition := strings.TrimPrefix(parts[0], "IF ")
-            result, err := evaluateExpression(data, condition)
-            if err != nil {
-                return false, err
-            }
-            if result {
-                thenParts := strings.SplitN(parts[1], "=", 2)
-                path := strings.TrimSpace(strings.Split(thenParts[0], " ")[1])
-                expr := strings.TrimSpace(thenParts[1])
-                val, err := parseValue(expr, nil)
-                if err != nil {
-                    return false, err
-                }
-                if err := setValue(data, path, val); err != nil {
-                    return false, err
-                }
-            }
-        } else if strings.HasPrefix(rule, "ADD ") {
-            parts := strings.SplitN(rule, " TO ", 2)
-            if len(parts) != 2 {
-                return false, fmt.Errorf("invalid ADD rule: %s", rule)
-            }
-            item := strings.TrimSpace(strings.Split(parts[0], " ")[1])
-            path := strings.TrimSpace(parts[1])
-            var newItem interface{}
-            if err := json.Unmarshal([]byte(item), &newItem); err != nil {
-                return false, fmt.Errorf("invalid ADD item: %s", item)
-            }
-            current, err := getValue(data, path)
-            if err != nil {
-                // Criar array se não existir
-                if err := setValue(data, path, []interface{}{newItem}); err != nil {
-                    return false, err
-                }
-            } else {
-                arr, ok := current.([]interface{})
-                if !ok {
-                    return false, fmt.Errorf("path %s is not an array", path)
-                }
-                arr = append(arr, newItem)
-                if err := setValue(data, path, arr); err != nil {
-                    return false, err
-                }
-            }
-        } else if strings.HasPrefix(rule, "COUNT(") || strings.HasPrefix(rule, "SUM(") ||
-            strings.HasPrefix(rule, "MAX(") || strings.HasPrefix(rule, "MIN(") ||
-            strings.HasPrefix(rule, "AVERAGE(") {
-            parts := strings.SplitN(rule, ")", 2)
-            if len(parts) != 2 {
-                return false, fmt.Errorf("invalid array operation rule: %s", rule)
-            }
-            op := strings.Split(parts[0], "(")[0]
-            path := strings.TrimPrefix(parts[0], op+"(")
-            opParts := strings.Split(parts[1], " ")
-            if len(opParts) < 2 {
-                return false, fmt.Errorf("invalid comparison: %s", rule)
-            }
-            opComp, right := opParts[0], strings.Join(opParts[1:], " ")
-            result, err := arrayOperation(data, op, path)
-            if err != nil {
-                return false, err
-            }
-            rightVal, err := parseFloat(right)
-            if err != nil {
-                return false, err
-            }
-            compResult, err := compareNumbers(result.(float64), rightVal, opComp)
-            if err != nil || !compResult {
-                return false, err
-            }
-        } else {
-            result, err := evaluateExpression(data, rule)
-            if err != nil || !result {
-                return false, err
-            }
-        }
-    }
-    return true, nil
+	for _, rule := range policy.Rules {
+		if strings.HasPrefix(rule, "SET ") {
+			parts := strings.SplitN(rule, "=", 2)
+			if len(parts) != 2 {
+				return false, fmt.Errorf("invalid SET rule: %s", rule)
+			}
+			path := strings.TrimSpace(strings.Split(parts[0], " ")[1])
+			expr := strings.TrimSpace(parts[1])
+			if strings.HasPrefix(expr, "EXP(") {
+				expr = strings.TrimSuffix(strings.TrimPrefix(expr, "EXP("), ")")
+				parts := strings.Split(expr, "*")
+				if len(parts) != 2 {
+					return false, fmt.Errorf("invalid EXP expression: %s", expr)
+				}
+				val, err := getValue(data, strings.TrimSpace(parts[0]))
+				if err != nil {
+					return false, err
+				}
+				numVal, ok := val.(float64)
+				if !ok {
+					return false, fmt.Errorf("invalid number in EXP: %v", val)
+				}
+				multiplier, err := parseFloat(strings.TrimSpace(parts[1]))
+				if err != nil {
+					return false, err
+				}
+				if err := setValue(data, path, numVal*multiplier); err != nil {
+					return false, err
+				}
+			} else if strings.HasPrefix(expr, "MAX(") || strings.HasPrefix(expr, "MIN(") ||
+				strings.HasPrefix(expr, "AVERAGE(") || strings.HasPrefix(expr, "SUM(") ||
+				strings.HasPrefix(expr, "COUNT(") {
+				op := strings.Split(expr, "(")[0]
+				pathExpr := strings.TrimSuffix(strings.Split(expr, "(")[1], ")")
+				result, err := arrayOperation(data, op, pathExpr)
+				if err != nil {
+					return false, err
+				}
+				if err := setValue(data, path, result); err != nil {
+					return false, err
+				}
+			} else {
+				val, err := parseValue(expr, nil)
+				if err != nil {
+					return false, err
+				}
+				if err := setValue(data, path, val); err != nil {
+					return false, err
+				}
+			}
+		} else if strings.HasPrefix(rule, "IF ") {
+			parts := strings.SplitN(rule, " THEN ", 2)
+			if len(parts) != 2 {
+				return false, fmt.Errorf("invalid IF rule: %s", rule)
+			}
+			condition := strings.TrimPrefix(parts[0], "IF ")
+			result, err := evaluateExpression(data, condition)
+			if err != nil {
+				return false, err
+			}
+			if result {
+				thenParts := strings.SplitN(parts[1], "=", 2)
+				path := strings.TrimSpace(strings.Split(thenParts[0], " ")[1])
+				expr := strings.TrimSpace(thenParts[1])
+				val, err := parseValue(expr, nil)
+				if err != nil {
+					return false, err
+				}
+				if err := setValue(data, path, val); err != nil {
+					return false, err
+				}
+			}
+		} else if strings.HasPrefix(rule, "ADD ") {
+			parts := strings.SplitN(rule, " TO ", 2)
+			if len(parts) != 2 {
+				return false, fmt.Errorf("invalid ADD rule: %s", rule)
+			}
+			item := strings.TrimSpace(strings.Split(parts[0], " ")[1])
+			path := strings.TrimSpace(parts[1])
+			var newItem interface{}
+			if err := json.Unmarshal([]byte(item), &newItem); err != nil {
+				return false, fmt.Errorf("invalid ADD item: %s", item)
+			}
+			current, err := getValue(data, path)
+			if err != nil {
+				// Criar array se não existir
+				if err := setValue(data, path, []interface{}{newItem}); err != nil {
+					return false, err
+				}
+			} else {
+				arr, ok := current.([]interface{})
+				if !ok {
+					return false, fmt.Errorf("path %s is not an array", path)
+				}
+				arr = append(arr, newItem)
+				if err := setValue(data, path, arr); err != nil {
+					return false, err
+				}
+			}
+		} else if strings.HasPrefix(rule, "COUNT(") || strings.HasPrefix(rule, "SUM(") ||
+			strings.HasPrefix(rule, "MAX(") || strings.HasPrefix(rule, "MIN(") ||
+			strings.HasPrefix(rule, "AVERAGE(") {
+			parts := strings.SplitN(rule, ")", 2)
+			if len(parts) != 2 {
+				return false, fmt.Errorf("invalid array operation rule: %s", rule)
+			}
+			op := strings.Split(parts[0], "(")[0]
+			path := strings.TrimPrefix(parts[0], op+"(")
+			opParts := strings.Split(parts[1], " ")
+			if len(opParts) < 2 {
+				return false, fmt.Errorf("invalid comparison: %s", rule)
+			}
+			opComp, right := opParts[0], strings.Join(opParts[1:], " ")
+			result, err := arrayOperation(data, op, path)
+			if err != nil {
+				return false, err
+			}
+			rightVal, err := parseFloat(right)
+			if err != nil {
+				return false, err
+			}
+			compResult, err := compareNumbers(result.(float64), rightVal, opComp)
+			if err != nil || !compResult {
+				return false, err
+			}
+		} else {
+			result, err := evaluateExpression(data, rule)
+			if err != nil || !result {
+				return false, err
+			}
+		}
+	}
+	return true, nil
 }

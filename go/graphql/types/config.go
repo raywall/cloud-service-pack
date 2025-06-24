@@ -49,7 +49,10 @@ type TokenService struct {
 	TokenAuthorizationURL string `json:"token_authorization_url"`
 
 	// Credentials representa as credenciais que serão utilizadas para gerar um novo token
-	Credentials Credentials
+	Credentials Credentials `json:"credentials"`
+
+	// CertificateSkipVerify indicates if you will validate the certificate or ignore it (more insecure)
+	CertificateSkipVerify bool `json:"certificateSkipVerify"`
 }
 
 // Authorization contains the authorization settings to be used by the Graphql API connectors

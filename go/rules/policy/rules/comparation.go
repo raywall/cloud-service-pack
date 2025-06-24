@@ -1,9 +1,9 @@
 package rules
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
-	"fmt"
 )
 
 func compareEquals(a, b interface{}) bool {
@@ -54,34 +54,34 @@ func isOperatorProtected(rulePart string, operator string) bool {
 }
 
 func compareNumbers(left, right interface{}, op string) (bool, error) {
-    l, lok := left.(float64)
-    r, rok := right.(float64)
-    if !lok || !rok {
-        return false, fmt.Errorf("invalid number comparison: %v %s %v", left, op, right)
-    }
-    switch op {
-    case ">=":
-        return l >= r, nil
-    case ">":
-        return l > r, nil
-    case "<=":
-        return l <= r, nil
-    case "<":
-        return l < r, nil
-    default:
-        return false, fmt.Errorf("unsupported number operator: %s", op)
-    }
+	l, lok := left.(float64)
+	r, rok := right.(float64)
+	if !lok || !rok {
+		return false, fmt.Errorf("invalid number comparison: %v %s %v", left, op, right)
+	}
+	switch op {
+	case ">=":
+		return l >= r, nil
+	case ">":
+		return l > r, nil
+	case "<=":
+		return l <= r, nil
+	case "<":
+		return l < r, nil
+	default:
+		return false, fmt.Errorf("unsupported number operator: %s", op)
+	}
 }
 
 func inArray(val, arr interface{}) (bool, error) {
-    arrVal, ok := arr.([]interface{})
-    if !ok {
-        return false, fmt.Errorf("invalid array for IN: %v", arr)
-    }
-    for _, item := range arrVal {
-        if reflect.DeepEqual(val, item) {
-            return true, nil
-        }
-    }
-    return false, nil
+	arrVal, ok := arr.([]interface{})
+	if !ok {
+		return false, fmt.Errorf("invalid array for IN: %v", arr)
+	}
+	for _, item := range arrVal {
+		if reflect.DeepEqual(val, item) {
+			return true, nil
+		}
+	}
+	return false, nil
 }

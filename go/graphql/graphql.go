@@ -110,7 +110,7 @@ func New(config *types.Config, resources *cloud.CloudContextList, region, endpoi
 				ClientID:     clientID,
 				ClientSecret: clientSecret,
 			},
-			config.Authorization.TokenService.CertificateSkipVerify,
+			config.Authorization.TokenService.InsecureSkipVerify,
 			&config.AccessToken)
 
 		if err := config.Token.Start(); err != nil {

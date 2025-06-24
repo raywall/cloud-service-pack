@@ -39,7 +39,7 @@ func init() {
 					ClientID:     "aws::secrets::/graphql/dev/credentials::json",
 					ClientSecret: "aws::secrets::/graphql/dev/credentials::json",
 				},
-				CertificateSkipVerify: false,
+				InsecureSkipVerify: false,
 			},
 		},
 		BasicData: &types.Info{

@@ -20,17 +20,17 @@ type Token interface {
 	RefreshToken() error
 }
 
-func NewManagedToken(apiURL string, authRequest AuthRequest, certSkipVerify bool, accessToken *string) Token {
+func NewManagedToken(apiURL string, authRequest AuthRequest, insecureSkipVerify bool, accessToken *string) Token {
 	ctx, cancel := context.WithCancel(context.Background())
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true, // WARNING: Use with caution in production
+			InsecureSkipVerify: insecureSkipVerify, // WARNING: Use with caution in production
 		},
 	}
 	httpClient := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 15 * time.Second,
 	}
-	if certSkipVerify {
+	if insecureSkipVerify {
 		httpClient.Transport = transport
 	}
 

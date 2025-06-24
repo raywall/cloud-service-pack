@@ -58,7 +58,7 @@ func (r *restAdapter) GetData(args []AdapterAttribute) (interface{}, error) {
 		if re.MatchString(finalValue) {
 			for _, attr := range args {
 				finalValue = strings.ReplaceAll(
-					route,
+					finalValue,
 					fmt.Sprintf("{%s}", attr.Name),
 					fmt.Sprintf("%v", attr.Value))
 			}

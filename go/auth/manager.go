@@ -12,7 +12,15 @@ import (
 	"time"
 )
 
-func NewManagedToken(apiURL string, authRequest AuthRequest, certSkipVerify bool, accessToken *string) *TokenManager {
+type Token interface {
+	Start() error
+	GetToken() (string, error)
+	Stop()
+	RefreshLoop()
+	RefreshToken() error
+}
+
+func NewManagedToken(apiURL string, authRequest AuthRequest, certSkipVerify bool, accessToken *string) Token {
 	ctx, cancel := context.WithCancel(context.Background())
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
@@ -26,9 +34,9 @@ func NewManagedToken(apiURL string, authRequest AuthRequest, certSkipVerify bool
 		httpClient.Transport = transport
 	}
 
-	return &TokenManager{
+	return &ManagedToken{
 		apiURL:      apiURL,
-		accessToken: *string,
+		accessToken: accessToken,
 		authRequest: authRequest,
 		client:      httpClient,
 		ctx:         ctx,
@@ -38,7 +46,7 @@ func NewManagedToken(apiURL string, authRequest AuthRequest, certSkipVerify bool
 
 // Start inicio o gerenciador de token e faz a primeira requisição para obter o token
 // Retorna erro se não conseguir obter o token inicial
-func (tm *TokenManager) Start() error {
+func (tm *ManagedToken) Start() error {
 	// Obter o token inicial
 	if err := tm.RefreshToken(); err != nil {
 		return err
@@ -51,7 +59,7 @@ func (tm *TokenManager) Start() error {
 }
 
 // GetToken retorna o token atual, garantindo que seja válido
-func (tm *TokenManager) GetToken() (string, error) {
+func (tm *ManagedToken) GetToken() (string, error) {
 	tm.mutex.RLock()
 	defer tm.mutex.RUnlock()
 
@@ -67,16 +75,16 @@ func (tm *TokenManager) GetToken() (string, error) {
 		log.Println("Token está próximo de expiração, mas ainda é válido")
 	}
 
-	return tm.accessToken, nil
+	return *tm.accessToken, nil
 }
 
 // Stop interrompe o gerenciador de token
-func (tm *TokenManager) Stop() {
+func (tm *ManagedToken) Stop() {
 	tm.cancelFunc()
 }
 
 // refreshLoop executa em background para manter o token atualizado
-func (tm *TokenManager) RefreshLoop() {
+func (tm *ManagedToken) RefreshLoop() {
 	tm.mutex.Lock()
 	tm.refreshing = true
 	tm.mutex.Unlock()
@@ -141,7 +149,7 @@ func (tm *TokenManager) RefreshLoop() {
 }
 
 // refreshToken faz uma chamada à API para obter um novo token
-func (tm *TokenManager) RefreshToken() error {
+func (tm *ManagedToken) RefreshToken() error {
 	// Preparar o payload da requisição
 	payload := url.Values{}
 	payload.Add("grant_type", "client_credentials")
@@ -175,7 +183,8 @@ func (tm *TokenManager) RefreshToken() error {
 
 	// Atualizar o token com lock para thread safety
 	tm.mutex.Lock()
-	tm.accessToken = tokenResp.Token
+	*tm.accessToken = tokenResp.Token
+
 	tm.expiresAt = time.Now().Add(time.Duration(tokenResp.ExpiresAt) * time.Second)
 	tm.mutex.Unlock()
 

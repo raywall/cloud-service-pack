@@ -18,6 +18,7 @@ type DynamoDBAdapter interface {
 type dynamoDBAdapter struct {
 	client *dynamodb.Client
 	table  string
+	attr   map[string]interface{}
 }
 
 func NewDynamoDBAdapter(region, table, accessKeyId, secretAccessKey string) DynamoDBAdapter {
@@ -40,11 +41,13 @@ func NewDynamoDBAdapter(region, table, accessKeyId, secretAccessKey string) Dyna
 	}
 }
 
-func (d *dynamoDBAdapter) GetData(key string) (interface{}, error) {
+func (d *dynamoDBAdapter) GetData(args []AdapterAttribute) (interface{}, error) {
+	key := args[0]
+
 	result, err := d.client.GetItem(context.Background(), &dynamodb.GetItemInput{
 		TableName: aws.String(d.table),
 		Key: map[string]types.AttributeValue{
-			"id": &types.AttributeValueMemberS{Value: key},
+			"id": &types.AttributeValueMemberS{Value: key.Name},
 		},
 	})
 	if err != nil {

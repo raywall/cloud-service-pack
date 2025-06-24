@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/raywall/cloud-service-pack/go/graphql/types"
 )
@@ -15,40 +16,55 @@ type RestAdapter interface {
 }
 
 type restAdapter struct {
-	client   *http.Client
+	client      *http.Client
 	accessToken *string
-	baseUrl  string
-	endpoint string
-	auth bool
-	attr map[string]interface{}
+	baseUrl     string
+	endpoint    string
+	auth        bool
+	attr        map[string]interface{}
+	headers     map[string]interface{}
 }
 
-func NewRestAdapter(cfg *types.Config, baseUrl, endpoint string, auth bool, attributes map[string]interface{}) RestAdapter {
+func NewRestAdapter(cfg *types.Config, baseUrl, endpoint string, auth bool, attributes, headers map[string]interface{}) RestAdapter {
 	return &restAdapter{
-		client:   &http.Client{
+		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 		accessToken: &cfg.AccessToken,
-		baseUrl:  baseUrl,
-		endpoint: endpoint,
-		attr: attributes,
-		auth: auth,
+		baseUrl:     baseUrl,
+		endpoint:    endpoint,
+		headers:     headers,
+		attr:        attributes,
+		auth:        auth,
 	}
 }
 
 func (r *restAdapter) GetData(args []AdapterAttribute) (interface{}, error) {
 	route := r.endpoint
-	for _, attr := range args {
-		route = strings.ReplaceAll(
-			route,
-			fmt.Sprintf("(%s)", attr.Nome),
-			fmt.Sprintf("%w", attr.Value))
+	if re.MatchString(route) {
+		for _, attr := range args {
+			route = strings.ReplaceAll(
+				route,
+				fmt.Sprintf("{%s}", attr.Name),
+				fmt.Sprintf("%v", attr.Value))
+		}
 	}
 
 	url := fmt.Sprintf("%s/%s", r.baseUrl, route)
 	req, _ := http.NewRequest("GET", url, nil)
 
-	// headers aqui
+	for key, value := range r.headers {
+		finalValue := value.(string)
+		if re.MatchString(finalValue) {
+			for _, attr := range args {
+				finalValue = strings.ReplaceAll(
+					route,
+					fmt.Sprintf("{%s}", attr.Name),
+					fmt.Sprintf("%v", attr.Value))
+			}
+		}
+		req.Header.Add(key, finalValue)
+	}
 
 	if r.auth {
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", *r.accessToken))

@@ -16,8 +16,8 @@ const (
 	OpenTelemetryCollector
 )
 
-// Basic represents the basic config necessary to the graphql observability
-type Basic struct {
+// Info represents the basic config necessary to the graphql observability
+type Info struct {
 	// Team indicates the name of the team/squad responsable for this service
 	Team string `json:"team"`
 
@@ -68,7 +68,7 @@ type Config struct {
 	Authorization Authorization
 
 	// BasicData is the basic information necessary to register the library observability
-	BasicData *Basic `json:"basic"`
+	BasicData *Info `json:"basic"`
 
 	// CloudContext is the cloud context that will be used to interact with available cloud resources
 	CloudContext cloud.CloudContext
@@ -90,8 +90,8 @@ type Config struct {
 	// Session is a AWS Session used by the service to interact with the cloud
 	Session *session.Session
 
-	// TokenManager is a auto managed token, responsable for manage and mantains the token always updated
-	TokenManager *auth.TokenManager
+	// Token is a auto managed token, responsable for manage and mantains the token always updated
+	Token auth.Token
 
 	// AccessToken is the access token updated by the TokenManager
 	AccessToken string

@@ -14,6 +14,7 @@ import (
 
 	"github.com/raywall/cloud-easy-connector/pkg/cloud"
 	"github.com/raywall/cloud-service-pack/go/graphql"
+	"github.com/raywall/cloud-service-pack/go/graphql/types"
 )
 
 var (
@@ -29,20 +30,27 @@ func init() {
 		cloud.SecretsManagerContext,
 	}
 
-	config := &graphql.Config{
-		Schema:     "local::file::/Users/macmini/Documents/workspace/projetos/cloud-service-pack/examples/config/schema.json",
-		Connectors: "aws::ssm::/graphql/dev/connectors::false",
-		Route:      "/graphql",
-		Authorization: graphql.Authorization{
+	config := &types.Config{
+		Authorization: types.Authorization{
 			RequireTokenSTS: false,
-			TokenService: graphql.TokenService{
+			TokenService: types.TokenService{
 				TokenAuthorizationURL: "https://sts.teste.net/api/oauth/token",
-				Credentials: graphql.Credentials{
+				Credentials: types.Credentials{
 					ClientID:     "aws::secrets::/graphql/dev/credentials::json",
 					ClientSecret: "aws::secrets::/graphql/dev/credentials::json",
 				},
 			},
 		},
+		BasicData: &types.Info{
+			Team:     "Squad",
+			Solution: "Solution",
+			Domain:   "Domain",
+			Product:  "Product",
+		},
+		Metrics:    types.OpenTelemetryCollector,
+		Connectors: "local::file::/Users/macmini/Documents/workspace/projetos/cloud-service-pack/examples/config/graphql/connectors.json",
+		Route:      "/graphql",
+		Schema:     "local::file::/Users/macmini/Documents/workspace/projetos/cloud-service-pack/examples/config/graphql/schema.json",
 	}
 
 	api, err = graphql.New(config, resources, "us-east-1", "http://localhost:4566")

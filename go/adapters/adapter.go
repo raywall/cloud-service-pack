@@ -1,22 +1,26 @@
 package adapters
 
+import "regexp"
+
+var re *regexp.Regexp = regexp.MustCompile(`({.+})`)
+
 type Adapter interface {
 	GetData(args []AdapterAttribute) (interface{}, error)
 	GetParameters(args map[string]interface{}) ([]AdapterAttribute, error)
 }
 
 type AdapterAttribute struct {
-	Name string
-	Type string
+	Name  string
+	Type  string
 	Value interface{}
 }
 
 func getParameters(attributes map[string]interface{}, args map[string]interface{}) ([]AdapterAttribute, error) {
-	params := mapke([]AdapterAttribute, 0)
+	params := make([]AdapterAttribute, 0)
 	for key, valueType := range attributes {
 		attribute := AdapterAttribute{
-			Name: key,
-			Type: valueType.(string),
+			Name:  key,
+			Type:  valueType.(string),
 			Value: nil,
 		}
 

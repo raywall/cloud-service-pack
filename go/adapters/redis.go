@@ -3,6 +3,8 @@ package adapters
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -12,7 +14,9 @@ type RedisAdapter interface {
 }
 
 type redisAdapter struct {
-	client *redis.Client
+	client     *redis.Client
+	keyPattern string
+	attr       map[string]interface{}
 }
 
 func NewRedisAdapter(endpoint, pass, keyPattern string, attributes map[string]interface{}) RedisAdapter {
@@ -24,20 +28,20 @@ func NewRedisAdapter(endpoint, pass, keyPattern string, attributes map[string]in
 				DB:       0,
 			},
 		),
-		attr: attributes,
+		attr:       attributes,
 		keyPattern: keyPattern,
 	}
 }
 
 func (r *redisAdapter) GetData(args []AdapterAttribute) (interface{}, error) {
-	if arts == nil || len(args) == 0 {
-		return nil, errors.New("the data key value was not informed")
+	if len(args) == 0 {
+		return nil, fmt.Errorf("the data key value was not informed")
 	}
 
 	searchKey := strings.ReplaceAll(
 		r.keyPattern,
-		fmt.Sprintf("(%s)", args[0].Name),
-		fmt.Sprintf("%w", args[0].Value))
+		fmt.Sprintf("{%s}", args[0].Name),
+		fmt.Sprintf("%v", args[0].Value))
 
 	data, err := r.client.Get(context.Background(), searchKey).Result()
 	if err != nil {

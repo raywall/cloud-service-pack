@@ -1,15 +1,16 @@
 package graph
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 	"sync"
 
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
-	"github.com/raywall/cloud-service-pack/go/graphql/types"
 	"github.com/raywall/cloud-service-pack/go/graphql/graph/connectors"
+	"github.com/raywall/cloud-service-pack/go/graphql/types"
 )
 
 type Resolver interface {
@@ -19,7 +20,8 @@ type Resolver interface {
 
 type resolver struct {
 	dataConnectors map[string]connectors.Connector
-	cloudContext   *types.Config
+	config         *types.Config
+	logger         *slog.Logger
 	mock           *mockResolver
 	// apiClient      *adapters.APIClient
 }
@@ -37,6 +39,7 @@ func NewResolver(cfg *types.Config, connectorConfig string) (Resolver, error) {
 
 	return &resolver{
 		dataConnectors: connectors,
+		logger:         slog.New(slog.NewJSONHandler(os.Stdout, nil)),
 		mock: &mockResolver{
 			Status: false,
 			Values: nil,
@@ -58,11 +61,6 @@ func (r *resolver) AddConfig(cfg *types.Config) error {
 }
 
 func (r *resolver) ResolveDataSource(p graphql.ResolveParams) (interface{}, error) {
-	codigo, ok := p.Args["codigoConvenio"].(int)
-	if !ok {
-		return nil, errors.New("invalid codigoConvenio")
-	}
-
 	var (
 		result          = make(map[string]interface{})
 		requestedFields = getRequestedFields(p.Info)
@@ -94,7 +92,7 @@ func (r *resolver) ResolveDataSource(p graphql.ResolveParams) (interface{}, erro
 			data, err := conn.GetData(p.Args)
 			if err != nil {
 				// Log the error instead of sending it to the error channel
-				logger.Error(fmt.Sprintf("error fetching %s", field), "error", err)
+				r.logger.Error(fmt.Sprintf("error fetching %s", field), "error", err)
 				return
 
 				// select {

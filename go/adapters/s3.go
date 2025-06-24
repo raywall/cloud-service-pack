@@ -17,6 +17,7 @@ type S3Adapter interface {
 type s3Adapter struct {
 	client *s3.Client
 	bucket string
+	attr   map[string]interface{}
 }
 
 func NewS3Adapter(region, bucket, accessKeyId, secretAccessKey string) S3Adapter {
@@ -39,7 +40,9 @@ func NewS3Adapter(region, bucket, accessKeyId, secretAccessKey string) S3Adapter
 	}
 }
 
-func (s *s3Adapter) GetData(key string) (interface{}, error) {
+func (s *s3Adapter) GetData(args []AdapterAttribute) (interface{}, error) {
+	key := args[0].Name
+
 	result, err := s.client.GetObject(context.Background(), &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(key),

@@ -1,0 +1,34 @@
+# .goreleaser.yml
+version: 2
+
+project_name: cloud-service-pack
+
+builds:
+- id: cloud-service-pack
+  main: ./examples/graphql.go
+  binary: cloud-service-pack
+  env:
+  - CGO_ENABLED=0
+  goos:
+  - linux
+  - windows
+  - darwin
+  goarch:
+  - amd64
+  - arm64
+  - arm
+
+release:
+  name_template: "Release {{ .Tag }}"
+  github:
+    owner: raywall
+    name: cloud-service-pack
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+    - 'Merge pull request'
+    - 'Merge branch'

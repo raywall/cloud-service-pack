@@ -1,0 +1,27 @@
+{
+	"PkgHandler": {
+		"Pattern": "/cloud-service-pack",
+		"StripPrefix": "/cloud-service-pack",
+		"Include": [
+			"/src/github.com/raywall/cloud-service-pack/go",
+			"/src/github.com/raywall/cloud-service-pack/examples/graphql.go",
+			"/src/github.com/raywall/cloud-service-pack/examples/config/graphql",
+		],
+		"Exclude": [
+			"/src/github.com/raywall/cloud-service-pack/examples/config/grafana",
+			"/src/github.com/raywall/cloud-service-pack/examples/config/rules",
+			"/src/github.com/raywall/cloud-service-pack/examples/config/Makefile",
+			"/src/github.com/raywall/cloud-service-pack/examples/otel.go",
+			"/src/github.com/raywall/cloud-service-pack/examples/rules.go",
+			"/src/github.com/raywall/cloud-service-pack/*.sh"
+		],
+		"IgnoredSuffixes": [
+			"iface"
+		]
+	},
+	"Github": {
+		"Tag": "main",
+		"Repo": "/raywall/cloud-service-pack",
+		"UseGithub": true
+	}
+}

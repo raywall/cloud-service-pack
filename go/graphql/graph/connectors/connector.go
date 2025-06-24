@@ -3,7 +3,6 @@ package connectors
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/raywall/cloud-service-pack/go/adapters"
 	"github.com/raywall/cloud-service-pack/go/graphql/types"
@@ -40,9 +39,20 @@ func NewConnector(cfg *types.Config, config ConnectorConfig) (Connector, error) 
 		adapter = adapters.NewRedisAdapter(endpoint, password, config.KeyPattern, attributes)
 
 	case "rest":
+		headers := make(map[string]interface{})
+		auth := false
+
+		if config.AdapterConfig["auth"] != nil {
+			auth = config.AdapterConfig["auth"].(bool)
+		}
+
+		if config.AdapterConfig["headers"] != nil {
+			headers = config.AdapterConfig["headers"].(map[string]interface{})
+		}
+
 		baseUrl, _ := config.AdapterConfig["baseUrl"].(string)
 		endpoint, _ := config.AdapterConfig["endpoint"].(string)
-		adapter = adapters.NewRestAdapter(baseUrl, endpoint, auth, attributes)
+		adapter = adapters.NewRestAdapter(cfg, baseUrl, endpoint, auth, attributes, headers)
 
 	case "s3":
 		region, _ := config.AdapterConfig["region"].(string)

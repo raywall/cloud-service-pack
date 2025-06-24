@@ -13,15 +13,15 @@ type AuthRequest struct {
 	ClientSecret string `json:"client_secret"`
 }
 
-// TokenManager gerencia o ciclo de vida do token STS
-type TokenManager struct {
+// ManagedToken gerencia o ciclo de vida do token STS
+type ManagedToken struct {
 	apiURL      string
 	authRequest AuthRequest
 	client      *http.Client
 
-	accessToken  *string
-	expiresAt time.Time
-	mutex     sync.RWMutex
+	accessToken *string
+	expiresAt   time.Time
+	mutex       sync.RWMutex
 
 	ctx        context.Context
 	cancelFunc context.CancelFunc

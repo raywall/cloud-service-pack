@@ -112,6 +112,10 @@ func New(config *types.Config, resources *cloud.CloudContextList, region, endpoi
 			},
 			config.Authorization.TokenService.CertificateSkipVerify,
 			&config.AccessToken)
+
+		if err := config.Token.Start(); err != nil {
+			return nil, err
+		}
 	}
 
 	return &api, nil

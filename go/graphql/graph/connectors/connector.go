@@ -43,7 +43,7 @@ func NewConnector(cfg *types.Config, config ConnectorConfig) (Connector, error) 
 		auth := false
 
 		if config.AdapterConfig["auth"] != nil {
-			auth = config.AdapterConfig["auth"].(bool)
+			auth, _ = config.AdapterConfig["auth"].(bool)
 		}
 
 		if config.AdapterConfig["headers"] != nil {

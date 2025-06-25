@@ -80,6 +80,7 @@ func (tm *ManagedToken) GetToken() (string, error) {
 
 // Stop interrompe o gerenciador de token
 func (tm *ManagedToken) Stop() {
+	tm.refreshing = false
 	tm.cancelFunc()
 }
 

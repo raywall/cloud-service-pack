@@ -70,7 +70,7 @@ func (r *restAdapter) GetData(args []AdapterAttribute) (interface{}, error) {
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", *r.accessToken))
 	}
 
-	resp, err := r.client.Get(url)
+	resp, err := r.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch from REST API %s: %v", url, err)
 	}

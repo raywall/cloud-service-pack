@@ -19,7 +19,7 @@ const route string = "/graphql"
 
 type GraphQL struct {
 	AccessToken *string         `json:"token"`
-	token       auth.Token      `json:"-"`
+	token       auth.Handler    `json:"-"`
 	Config      types.Config    `json:"config"`
 	Resolver    *graph.Resolver `json:"resolver"`
 	Schema      *gp.Schema      `json:"schema"`
@@ -104,9 +104,9 @@ func New(config *types.Config, resources *cloud.CloudContextList, region, endpoi
 			return nil, err
 		}
 
-		config.Token = auth.NewManagedToken(
+		config.Token = auth.New(
 			authServiceUrl,
-			auth.AuthRequest{
+			auth.TokenRequest{
 				ClientID:     clientID,
 				ClientSecret: clientSecret,
 			},

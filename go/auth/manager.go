@@ -1,3 +1,14 @@
+// Copyright 2025 Raywall Malheiros de Souza. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+/*
+Package auth provides an auto managed token client, capable of monitoring token expiration
+and refresh access token automatically without any intervention of the user.
+
+It defines a type, [Handler], wich provides several methods (such as [Handler.GetToken], [Handler.Start]
+and [Handler.Stop]) to enable the interaction with the token client.
+*/
 package auth
 
 import (
@@ -9,18 +20,40 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
-type Token interface {
-	Start() error
-	GetToken() (string, error)
-	Stop()
-	RefreshLoop()
-	RefreshToken() error
+// TokenRequest representa os dados enviados para a API de autenticação
+type TokenRequest struct {
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
 }
 
-func NewManagedToken(apiURL string, authRequest AuthRequest, insecureSkipVerify bool, accessToken *string) Token {
+// response representa a resposta da API de autenticação
+type response struct {
+	Active       bool   `json:"active"`
+	ExpiresAt    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	Scope        string `json:"scope"`
+	Token        string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+}
+
+// ManagedToken gerencia o ciclo de vida do token STS
+type ManagedToken struct {
+	apiURL      string
+	accessToken *string
+	cancelFunc  context.CancelFunc
+	client      *http.Client
+	ctx         context.Context
+	expiresAt   time.Time
+	mutex       sync.RWMutex
+	refreshing  bool
+	request     TokenRequest
+}
+
+func New(apiURL string, req TokenRequest, insecureSkipVerify bool, accessToken *string) Handler {
 	ctx, cancel := context.WithCancel(context.Background())
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
@@ -37,10 +70,10 @@ func NewManagedToken(apiURL string, authRequest AuthRequest, insecureSkipVerify 
 	return &ManagedToken{
 		apiURL:      apiURL,
 		accessToken: accessToken,
-		authRequest: authRequest,
+		cancelFunc:  cancel,
 		client:      httpClient,
 		ctx:         ctx,
-		cancelFunc:  cancel,
+		request:     req,
 	}
 }
 
@@ -48,12 +81,12 @@ func NewManagedToken(apiURL string, authRequest AuthRequest, insecureSkipVerify 
 // Retorna erro se não conseguir obter o token inicial
 func (tm *ManagedToken) Start() error {
 	// Obter o token inicial
-	if err := tm.RefreshToken(); err != nil {
+	if err := tm.refreshToken(); err != nil {
 		return err
 	}
 
 	// Iniciar goroutine para atualização automática
-	go tm.RefreshLoop()
+	go tm.refreshLoop()
 
 	return nil
 }
@@ -85,7 +118,7 @@ func (tm *ManagedToken) Stop() {
 }
 
 // refreshLoop executa em background para manter o token atualizado
-func (tm *ManagedToken) RefreshLoop() {
+func (tm *ManagedToken) refreshLoop() {
 	tm.mutex.Lock()
 	tm.refreshing = true
 	tm.mutex.Unlock()
@@ -106,7 +139,7 @@ func (tm *ManagedToken) RefreshLoop() {
 		now := time.Now()
 		if expiresAt.IsZero() {
 			// Se não temos um tempo de expiração válido, tentamos imediatamente
-			tm.RefreshToken()
+			tm.refreshToken()
 			time.Sleep(5 * time.Second) // Evita loop infinito em caso de falha
 			continue
 		}
@@ -118,7 +151,7 @@ func (tm *ManagedToken) RefreshLoop() {
 
 		if sleepDuration <= 0 {
 			// Já passou o tempo de renovação, renovar imediatamente
-			if err := tm.RefreshToken(); err != nil {
+			if err := tm.refreshToken(); err != nil {
 				log.Printf("Erro ao renovar token: %v. Tentando novamente em 10 segundos.", err)
 				// Em caso de erro, esperar um pouco antes de tentar novamente
 				select {
@@ -134,7 +167,7 @@ func (tm *ManagedToken) RefreshLoop() {
 			case <-tm.ctx.Done():
 				return
 			case <-time.After(sleepDuration):
-				if err := tm.RefreshToken(); err != nil {
+				if err := tm.refreshToken(); err != nil {
 					log.Printf("Erro ao renovar token: %v. Tentando novamente em 10 segundos.", err)
 					// Em caso de erro, esperar um pouco antes de tentar novamente
 					select {
@@ -150,12 +183,12 @@ func (tm *ManagedToken) RefreshLoop() {
 }
 
 // refreshToken faz uma chamada à API para obter um novo token
-func (tm *ManagedToken) RefreshToken() error {
+func (tm *ManagedToken) refreshToken() error {
 	// Preparar o payload da requisição
 	payload := url.Values{}
 	payload.Add("grant_type", "client_credentials")
-	payload.Add("client_id", tm.authRequest.ClientID)
-	payload.Add("client_secret", tm.authRequest.ClientSecret)
+	payload.Add("client_id", tm.request.ClientID)
+	payload.Add("client_secret", tm.request.ClientSecret)
 
 	// Criar a requisição
 	req, err := http.NewRequestWithContext(tm.ctx, "POST", tm.apiURL, strings.NewReader(payload.Encode()))
@@ -177,7 +210,7 @@ func (tm *ManagedToken) RefreshToken() error {
 	}
 
 	// Decodificar a resposta
-	var tokenResp TokenResponse
+	var tokenResp response
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return err
 	}

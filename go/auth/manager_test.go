@@ -9,18 +9,18 @@ import (
 	"time"
 )
 
-func TestNewManagedToken(t *testing.T) {
+func TestNewHandler(t *testing.T) {
 	tests := []struct {
 		name               string
 		apiURL             string
-		authRequest        AuthRequest
+		req                TokenRequest
 		insecureSkipVerify bool
 		accessToken        *string
 	}{
 		{
 			name:   "criar token manager com configurações básicas",
 			apiURL: "https://api.example.com/token",
-			authRequest: AuthRequest{
+			req: TokenRequest{
 				ClientID:     "test-client",
 				ClientSecret: "test-secret",
 			},
@@ -30,7 +30,7 @@ func TestNewManagedToken(t *testing.T) {
 		{
 			name:   "criar token manager com insecure skip verify",
 			apiURL: "https://api.example.com/token",
-			authRequest: AuthRequest{
+			req: TokenRequest{
 				ClientID:     "test-client",
 				ClientSecret: "test-secret",
 			},
@@ -41,19 +41,14 @@ func TestNewManagedToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			token := NewManagedToken(tt.apiURL, tt.authRequest, tt.insecureSkipVerify, tt.accessToken)
-
-			managedToken, ok := token.(*ManagedToken)
-			if !ok {
-				t.Fatal("esperado *ManagedToken")
-			}
+			managedToken := New(tt.apiURL, tt.req, tt.insecureSkipVerify, tt.accessToken).(*ManagedToken)
 
 			if managedToken.apiURL != tt.apiURL {
 				t.Errorf("apiURL = %v, esperado %v", managedToken.apiURL, tt.apiURL)
 			}
 
-			if managedToken.authRequest.ClientID != tt.authRequest.ClientID {
-				t.Errorf("ClientID = %v, esperado %v", managedToken.authRequest.ClientID, tt.authRequest.ClientID)
+			if managedToken.request.ClientID != tt.req.ClientID {
+				t.Errorf("ClientID = %v, esperado %v", managedToken.request.ClientID, tt.req.ClientID)
 			}
 
 			if managedToken.accessToken != tt.accessToken {
@@ -63,7 +58,7 @@ func TestNewManagedToken(t *testing.T) {
 	}
 }
 
-func TestManagedToken_RefreshToken_Success(t *testing.T) {
+func TestHandler_RefreshToken_Success(t *testing.T) {
 	// Mock server que retorna um token válido
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
@@ -91,7 +86,7 @@ func TestManagedToken_RefreshToken_Success(t *testing.T) {
 			t.Errorf("client_secret incorreto: %s", r.Form.Get("client_secret"))
 		}
 
-		response := TokenResponse{
+		resp := response{
 			Token:     "test-access-token",
 			TokenType: "Bearer",
 			ExpiresAt: 3600,
@@ -99,19 +94,17 @@ func TestManagedToken_RefreshToken_Success(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
 	accessToken := ""
-	token := NewManagedToken(server.URL, AuthRequest{
+	managedToken := New(server.URL, TokenRequest{
 		ClientID:     "test-client",
 		ClientSecret: "test-secret",
-	}, false, &accessToken)
+	}, false, &accessToken).(*ManagedToken)
 
-	managedToken := token.(*ManagedToken)
-
-	err := managedToken.RefreshToken()
+	err := managedToken.refreshToken()
 	if err != nil {
 		t.Fatalf("RefreshToken() erro = %v", err)
 	}
@@ -128,7 +121,7 @@ func TestManagedToken_RefreshToken_Success(t *testing.T) {
 	}
 }
 
-func TestManagedToken_RefreshToken_HTTPError(t *testing.T) {
+func TestHandler_refreshToken_HTTPError(t *testing.T) {
 	// Mock server que retorna erro HTTP
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -136,14 +129,12 @@ func TestManagedToken_RefreshToken_HTTPError(t *testing.T) {
 	defer server.Close()
 
 	accessToken := ""
-	token := NewManagedToken(server.URL, AuthRequest{
+	managedToken := New(server.URL, TokenRequest{
 		ClientID:     "test-client",
 		ClientSecret: "test-secret",
-	}, false, &accessToken)
+	}, false, &accessToken).(*ManagedToken)
 
-	managedToken := token.(*ManagedToken)
-
-	err := managedToken.RefreshToken()
+	err := managedToken.refreshToken()
 	if err == nil {
 		t.Fatal("esperado erro, mas não houve")
 	}
@@ -154,7 +145,7 @@ func TestManagedToken_RefreshToken_HTTPError(t *testing.T) {
 	}
 }
 
-func TestManagedToken_RefreshToken_InvalidJSON(t *testing.T) {
+func TestHandler_refreshToken_InvalidJSON(t *testing.T) {
 	// Mock server que retorna JSON inválido
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -163,24 +154,21 @@ func TestManagedToken_RefreshToken_InvalidJSON(t *testing.T) {
 	defer server.Close()
 
 	accessToken := ""
-	token := NewManagedToken(server.URL, AuthRequest{
+	managedToken := New(server.URL, TokenRequest{
 		ClientID:     "test-client",
 		ClientSecret: "test-secret",
 	}, false, &accessToken)
 
-	managedToken := token.(*ManagedToken)
-
-	err := managedToken.RefreshToken()
+	err := managedToken.refreshToken()
 	if err == nil {
 		t.Fatal("esperado erro de JSON inválido")
 	}
 }
 
-func TestManagedToken_GetToken_Success(t *testing.T) {
+func TestHandler_GetToken_Success(t *testing.T) {
 	accessToken := "valid-token"
-	token := NewManagedToken("https://api.example.com", AuthRequest{}, false, &accessToken)
+	managedToken := New("https://api.example.com", TokenRequest{}, false, &accessToken).(*ManagedToken)
 
-	managedToken := token.(*ManagedToken)
 	// Definir uma data de expiração futura
 	managedToken.expiresAt = time.Now().Add(time.Hour)
 
@@ -194,9 +182,8 @@ func TestManagedToken_GetToken_Success(t *testing.T) {
 	}
 }
 
-func TestManagedToken_GetToken_NoToken(t *testing.T) {
-	token := NewManagedToken("https://api.example.com", AuthRequest{}, false, nil)
-	managedToken := token.(*ManagedToken)
+func TestHandler_GetToken_NoToken(t *testing.T) {
+	managedToken := New("https://api.example.com", TokenRequest{}, false, nil)
 
 	_, err := managedToken.GetToken()
 	if err == nil {
@@ -209,11 +196,10 @@ func TestManagedToken_GetToken_NoToken(t *testing.T) {
 	}
 }
 
-func TestManagedToken_GetToken_NearExpiry(t *testing.T) {
+func TestHandler_GetToken_NearExpiry(t *testing.T) {
 	accessToken := "expiring-soon-token"
-	token := NewManagedToken("https://api.example.com", AuthRequest{}, false, &accessToken)
+	managedToken := New("https://api.example.com", TokenRequest{}, false, &accessToken).(*ManagedToken)
 
-	managedToken := token.(*ManagedToken)
 	// Definir uma data de expiração próxima (dentro de 30 segundos)
 	managedToken.expiresAt = time.Now().Add(15 * time.Second)
 
@@ -228,25 +214,25 @@ func TestManagedToken_GetToken_NearExpiry(t *testing.T) {
 	}
 }
 
-func TestManagedToken_Start_Success(t *testing.T) {
+func TestHandler_Start_Success(t *testing.T) {
 	// Mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := TokenResponse{
+		resp := response{
 			Token:     "initial-token",
 			TokenType: "Bearer",
 			ExpiresAt: 3600,
 			Active:    true,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
 	accessToken := ""
-	token := NewManagedToken(server.URL, AuthRequest{
+	token := New(server.URL, TokenRequest{
 		ClientID:     "test-client",
 		ClientSecret: "test-secret",
-	}, false, &accessToken)
+	}, false, &accessToken).(*ManagedToken)
 
 	err := token.Start()
 	if err != nil {
@@ -262,7 +248,7 @@ func TestManagedToken_Start_Success(t *testing.T) {
 	token.Stop()
 }
 
-func TestManagedToken_Start_InitialRefreshFails(t *testing.T) {
+func TestHandler_Start_InitialRefreshFails(t *testing.T) {
 	// Mock server que sempre falha
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -270,10 +256,10 @@ func TestManagedToken_Start_InitialRefreshFails(t *testing.T) {
 	defer server.Close()
 
 	accessToken := ""
-	token := NewManagedToken(server.URL, AuthRequest{
+	token := New(server.URL, TokenRequest{
 		ClientID:     "test-client",
 		ClientSecret: "test-secret",
-	}, false, &accessToken)
+	}, false, &accessToken).(*ManagedToken)
 
 	err := token.Start()
 	if err == nil {
@@ -281,7 +267,7 @@ func TestManagedToken_Start_InitialRefreshFails(t *testing.T) {
 	}
 }
 
-func TestManagedToken_RefreshLoop_Concurrency(t *testing.T) {
+func TestHandler_RefreshLoop_Concurrency(t *testing.T) {
 	callCount := 0
 	var mu sync.Mutex
 
@@ -292,22 +278,22 @@ func TestManagedToken_RefreshLoop_Concurrency(t *testing.T) {
 		currentCount := callCount
 		mu.Unlock()
 
-		response := TokenResponse{
+		resp := response{
 			Token:     "token-" + string(rune(currentCount)),
 			TokenType: "Bearer",
 			ExpiresAt: 1, // 1 segundo para forçar renovações frequentes
 			Active:    true,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
 	accessToken := ""
-	token := NewManagedToken(server.URL, AuthRequest{
+	token := New(server.URL, TokenRequest{
 		ClientID:     "test-client",
 		ClientSecret: "test-secret",
-	}, false, &accessToken)
+	}, false, &accessToken).(*ManagedToken)
 
 	err := token.Start()
 	if err != nil {
@@ -329,11 +315,9 @@ func TestManagedToken_RefreshLoop_Concurrency(t *testing.T) {
 	token.Stop()
 }
 
-func TestManagedToken_Stop(t *testing.T) {
+func TestHandler_Stop(t *testing.T) {
 	accessToken := ""
-	token := NewManagedToken("https://api.example.com", AuthRequest{}, false, &accessToken)
-
-	managedToken := token.(*ManagedToken)
+	managedToken := New("https://api.example.com", TokenRequest{}, false, &accessToken).(*ManagedToken)
 
 	// Verificar se o contexto não está cancelado inicialmente
 	select {
@@ -342,7 +326,7 @@ func TestManagedToken_Stop(t *testing.T) {
 	default:
 	}
 
-	token.Stop()
+	managedToken.Stop()
 
 	// Verificar se o contexto foi cancelado
 	select {
@@ -353,35 +337,33 @@ func TestManagedToken_Stop(t *testing.T) {
 	}
 }
 
-func TestManagedToken_RefreshLoop_ContextCancellation(t *testing.T) {
+func TestHandler_refreshLoop_ContextCancellation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		response := TokenResponse{
+		resp := response{
 			Token:     "test-token",
 			TokenType: "Bearer",
 			ExpiresAt: 3600,
 			Active:    true,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
 	accessToken := ""
-	token := NewManagedToken(server.URL, AuthRequest{
+	managedToken := New(server.URL, TokenRequest{
 		ClientID:     "test-client",
 		ClientSecret: "test-secret",
-	}, false, &accessToken)
-
-	managedToken := token.(*ManagedToken)
+	}, false, &accessToken).(*ManagedToken)
 
 	// Iniciar o refresh loop
-	go managedToken.RefreshLoop()
+	go managedToken.refreshLoop()
 
 	// Aguardar um pouco para garantir que o loop começou
 	time.Sleep(100 * time.Millisecond)
 
 	// Cancelar o contexto
-	token.Stop()
+	managedToken.Stop()
 
 	// Aguardar um pouco para garantir que o loop terminou
 	time.Sleep(100 * time.Millisecond)
@@ -396,7 +378,7 @@ func TestManagedToken_RefreshLoop_ContextCancellation(t *testing.T) {
 	}
 }
 
-func TestManagedToken_RefreshLoop_ErrorHandling(t *testing.T) {
+func TestHandler_refreshLoop_ErrorHandling(t *testing.T) {
 	failCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		failCount++
@@ -407,24 +389,22 @@ func TestManagedToken_RefreshLoop_ErrorHandling(t *testing.T) {
 		}
 
 		// Sucesso na terceira tentativa
-		response := TokenResponse{
+		resp := response{
 			Token:     "success-token",
 			TokenType: "Bearer",
 			ExpiresAt: 3600,
 			Active:    true,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
 	accessToken := ""
-	token := NewManagedToken(server.URL, AuthRequest{
+	managedToken := New(server.URL, TokenRequest{
 		ClientID:     "test-client",
 		ClientSecret: "test-secret",
-	}, false, &accessToken)
-
-	managedToken := token.(*ManagedToken)
+	}, false, &accessToken).(*ManagedToken)
 
 	// Definir expiresAt no passado para forçar renovação imediata
 	managedToken.expiresAt = time.Now().Add(-time.Hour)
@@ -432,7 +412,7 @@ func TestManagedToken_RefreshLoop_ErrorHandling(t *testing.T) {
 	// Executar o refresh loop por um tempo limitado
 	done := make(chan bool)
 	go func() {
-		managedToken.RefreshLoop()
+		managedToken.refreshLoop()
 		done <- true
 	}()
 
@@ -440,7 +420,7 @@ func TestManagedToken_RefreshLoop_ErrorHandling(t *testing.T) {
 	time.Sleep(25 * time.Second)
 
 	// Parar o loop
-	token.Stop()
+	managedToken.Stop()
 
 	// Aguardar o loop terminar
 	select {
@@ -458,9 +438,7 @@ func TestManagedToken_RefreshLoop_ErrorHandling(t *testing.T) {
 // Benchmark para medir performance do GetToken
 func BenchmarkManagedToken_GetToken(b *testing.B) {
 	accessToken := "benchmark-token"
-	token := NewManagedToken("https://api.example.com", AuthRequest{}, false, &accessToken)
-
-	managedToken := token.(*ManagedToken)
+	managedToken := New("https://api.example.com", TokenRequest{}, false, &accessToken).(*ManagedToken)
 	managedToken.expiresAt = time.Now().Add(time.Hour)
 
 	b.ResetTimer()
@@ -475,11 +453,10 @@ func BenchmarkManagedToken_GetToken(b *testing.B) {
 }
 
 // Test para verificar thread safety
-func TestManagedToken_ThreadSafety(t *testing.T) {
+func TestHandler_ThreadSafety(t *testing.T) {
 	accessToken := "thread-safe-token"
-	token := NewManagedToken("https://api.example.com", AuthRequest{}, false, &accessToken)
+	managedToken := New("https://api.example.com", TokenRequest{}, false, &accessToken).(*ManagedToken)
 
-	managedToken := token.(*ManagedToken)
 	managedToken.expiresAt = time.Now().Add(time.Hour)
 
 	var wg sync.WaitGroup

@@ -94,7 +94,7 @@ type Config struct {
 	Session *session.Session
 
 	// Token is a auto managed token, responsable for manage and mantains the token always updated
-	Token auth.Token
+	Token auth.Handler
 
 	// AccessToken is the access token updated by the TokenManager
 	AccessToken string

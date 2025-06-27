@@ -104,16 +104,19 @@ func New(config *types.Config, resources *cloud.CloudContextList, region, endpoi
 			return nil, err
 		}
 
-		config.Token = auth.New(
-			authServiceUrl,
-			auth.TokenRequest{
-				ClientID:     clientID,
-				ClientSecret: clientSecret,
-			},
-			config.Authorization.TokenService.InsecureSkipVerify,
-			&config.AccessToken)
+		config.Authenticator = auth.NewAuthenticator(
+			auth.NewSTSAuthHandler(
+				authServiceUrl,
+				&auth.Credential{
+					ClientID:     clientID,
+					ClientSecret: clientSecret,
+				},
+				&auth.Options{
+					InsecureSkipVerify: config.Authorization.TokenService.InsecureSkipVerify,
+				})).
+			WithController(&config.AccessToken)
 
-		if err := config.Token.Start(); err != nil {
+		if err := config.Authenticator.Start(); err != nil {
 			return nil, err
 		}
 	}

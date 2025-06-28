@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/raywall/cloud-easy-connector/pkg/cloud"
-	"github.com/raywall/cloud-service-pack/go/auth"
+	auth "github.com/raywall/cloud-service-pack/go/authenticator"
 	"github.com/raywall/cloud-service-pack/go/data"
 )
 

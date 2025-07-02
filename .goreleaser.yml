@@ -4,21 +4,6 @@ version: 2
 # Opcional: defina o nome do projeto se necessário
 project_name: cloud-service-pack
 
-# builds:
-# - id: cloud-service-pack
-#   main: ./examples/graphql.go
-#   binary: cloud-service-pack
-#   env:
-#   - CGO_ENABLED=0
-#   goos:
-#   - linux
-#   - windows
-#   - darwin
-#   goarch:
-#   - amd64
-#   - arm64
-#   - arm
-
 release:
   # Opcional: você pode remover a seção 'github' se o repositório 
   # no qual você está executando a action for o 'raywall/cloud-service-pack'.

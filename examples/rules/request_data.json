@@ -1,0 +1,38 @@
+{
+    "id": "req-001",
+    "timestamp": "2025-04-25T12:00:00Z",
+    "context": {
+      "userId": "user-123",
+      "source": "web"
+    },
+    "data": {
+      "valor": 150.00,
+      "limiteMaximo": 500.00,
+      "moeda": "BRL",
+      "idade": 21,
+      "tipo": "adulto",
+      "cliente": {
+        "tipo": "premium"
+      },
+      "endereco": {
+        "cep": "01234-567",
+        "cidade": "São Paulo",
+        "estado": "SP"
+      },
+      "transacoes": [
+        {"id": "t1", "valor": 50.00},
+        {"id": "t2", "valor": 75.00}
+      ],
+      "limites": {
+        "maxTransacoes": 10,
+        "valorTotal": 1000.00
+      }
+    },
+    "policies": [
+      "ValidarIdade",
+      "ValidarValorTransacao",
+      "CalcularDesconto",
+      "AplicarImpostos",
+      "ValidarEndereco"
+    ]
+  }

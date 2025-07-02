@@ -18,23 +18,20 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// OtelMetricHandler is a struct that represents an OpenTelemetry client configuration
+// OtelMetricHandler implements the MetricHandler interface for OpenTelemetry.
 type OtelMetricHandler struct {
-	tracer         trace.Tracer
-	meter          metric.Meter
-	counters       map[string]metric.Int64Counter
-	gauges         map[string]metric.Float64Gauge
-	histograms     map[string]metric.Float64Histogram
-	upDownCounter  map[string]metric.Int64UpDownCounter
-	serviceName    string
-	serviceVersion string
+	tracer     trace.Tracer
+	meter      metric.Meter
+	counters   map[string]metric.Int64Counter
+	gauges     map[string]metric.Float64Gauge
+	histograms map[string]metric.Float64Histogram
 }
 
-// NewOtelMetricHandler creates a new OpenTelemetry client configuration
+// NewOtelMetricHandler creates a new OpenTelemetry client, including trace and metric providers.
+// It establishes a GRPC connection to an OTEL collector.
 func NewOtelMetricHandler(serviceName, serviceVersion, otelEndpoint string) (*OtelMetricHandler, error) {
 	ctx := context.Background()
 
-	// Create resource with service information
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
 			semconv.ServiceName(serviceName),
@@ -42,70 +39,50 @@ func NewOtelMetricHandler(serviceName, serviceVersion, otelEndpoint string) (*Ot
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create resource: %v", err)
+		return nil, fmt.Errorf("failed to create OTEL resource: %w", err)
 	}
 
-	// Configure trace exporter
-	traceExporter, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithEndpoint(otelEndpoint),
-		otlptracegrpc.WithInsecure(),
-	)
+	// Configure and create a trace exporter and provider.
+	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithEndpoint(otelEndpoint), otlptracegrpc.WithInsecure())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create trace exporter: %v", err)
+		return nil, fmt.Errorf("failed to create OTEL trace exporter: %w", err)
 	}
-
-	// Configure trace provider
-	traceProvider := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(traceExporter),
-		sdktrace.WithResource(res),
-	)
+	traceProvider := sdktrace.NewTracerProvider(sdktrace.WithBatcher(traceExporter), sdktrace.WithResource(res))
 	otel.SetTracerProvider(traceProvider)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
-	// Configure metric exporter
-	metricExporter, err := otlpmetricgrpc.New(ctx,
-		otlpmetricgrpc.WithEndpoint(otelEndpoint),
-		otlpmetricgrpc.WithInsecure(),
-	)
+	// Configure and create a metric exporter and provider.
+	metricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithEndpoint(otelEndpoint), otlpmetricgrpc.WithInsecure())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create metric exporter: %v", err)
+		return nil, fmt.Errorf("failed to create OTEL metric exporter: %w", err)
 	}
-
-	// Configure metric provider
 	metricProvider := sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter,
-			sdkmetric.WithInterval(10*time.Second))),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter, sdkmetric.WithInterval(10*time.Second))),
 		sdkmetric.WithResource(res),
 	)
 	otel.SetMeterProvider(metricProvider)
 
-	// Create tracer and meter
-	tracer := otel.Tracer(serviceName)
-	meter := otel.Meter(serviceName)
-
 	return &OtelMetricHandler{
-		tracer:         tracer,
-		meter:          meter,
-		counters:       make(map[string]metric.Int64Counter),
-		gauges:         make(map[string]metric.Float64Gauge),
-		histograms:     make(map[string]metric.Float64Histogram),
-		upDownCounter:  make(map[string]metric.Int64UpDownCounter),
-		serviceName:    serviceName,
-		serviceVersion: serviceVersion,
+		tracer:     otel.Tracer(serviceName),
+		meter:      otel.Meter(serviceName),
+		counters:   make(map[string]metric.Int64Counter),
+		gauges:     make(map[string]metric.Float64Gauge),
+		histograms: make(map[string]metric.Float64Histogram),
 	}, nil
 }
 
-// Increment helps to increment a value in an OpenTelemetry custom metric
+// Increment adds a value to a counter metric in OpenTelemetry.
+// It creates the counter on-demand if it doesn't already exist.
 func (c *OtelMetricHandler) Increment(ctx context.Context, metricName string, value int64, tags types.Tags) error {
 	counter, exists := c.counters[metricName]
 	if !exists {
 		var err error
 		counter, err = c.meter.Int64Counter(
 			metricName,
-			metric.WithDescription(fmt.Sprintf("Counter metric for %s", metricName)),
+			metric.WithDescription(fmt.Sprintf("Counter for %s", metricName)),
 		)
 		if err != nil {
-			return fmt.Errorf("failed to create counter: %v", err)
+			return fmt.Errorf("failed to create OTEL counter: %w", err)
 		}
 		c.counters[metricName] = counter
 	}
@@ -114,17 +91,18 @@ func (c *OtelMetricHandler) Increment(ctx context.Context, metricName string, va
 	return nil
 }
 
-// Gauge defines a static value in an OpenTelemetry custom metric
+// Gauge records a value for a gauge metric in OpenTelemetry.
+// It creates the gauge on-demand if it doesn't already exist.
 func (c *OtelMetricHandler) Gauge(ctx context.Context, metricName string, value float64, tags types.Tags) error {
 	gauge, exists := c.gauges[metricName]
 	if !exists {
 		var err error
 		gauge, err = c.meter.Float64Gauge(
 			metricName,
-			metric.WithDescription(fmt.Sprintf("Gauge metric for %s", metricName)),
+			metric.WithDescription(fmt.Sprintf("Gauge for %s", metricName)),
 		)
 		if err != nil {
-			return fmt.Errorf("failed to create gauge: %v", err)
+			return fmt.Errorf("failed to create OTEL gauge: %w", err)
 		}
 		c.gauges[metricName] = gauge
 	}
@@ -133,17 +111,18 @@ func (c *OtelMetricHandler) Gauge(ctx context.Context, metricName string, value 
 	return nil
 }
 
-// Histogram defines a histogram value (e.g. latency)
+// Histogram records a value for a histogram metric in OpenTelemetry.
+// It creates the histogram on-demand if it doesn't already exist.
 func (c *OtelMetricHandler) Histogram(ctx context.Context, metricName string, value float64, tags types.Tags) error {
 	histogram, exists := c.histograms[metricName]
 	if !exists {
 		var err error
 		histogram, err = c.meter.Float64Histogram(
 			metricName,
-			metric.WithDescription(fmt.Sprintf("Histogram metric for %s", metricName)),
+			metric.WithDescription(fmt.Sprintf("Histogram for %s", metricName)),
 		)
 		if err != nil {
-			return fmt.Errorf("failed to create histogram: %v", err)
+			return fmt.Errorf("failed to create OTEL histogram: %w", err)
 		}
 		c.histograms[metricName] = histogram
 	}
@@ -152,61 +131,26 @@ func (c *OtelMetricHandler) Histogram(ctx context.Context, metricName string, va
 	return nil
 }
 
-// Close helps to close the OpenTelemetry providers
+// Close gracefully shuts down the OpenTelemetry trace and meter providers,
+// ensuring all buffered telemetry is exported.
 func (c *OtelMetricHandler) Close() error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// Get providers and shutdown
+	var shutdownErr error
 	if tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider); ok {
 		if err := tp.Shutdown(ctx); err != nil {
-			return fmt.Errorf("failed to shutdown trace provider: %v", err)
+			shutdownErr = fmt.Errorf("failed to shutdown trace provider: %w", err)
 		}
 	}
-
 	if mp, ok := otel.GetMeterProvider().(*sdkmetric.MeterProvider); ok {
 		if err := mp.Shutdown(ctx); err != nil {
-			return fmt.Errorf("failed to shutdown meter provider: %v", err)
+			if shutdownErr != nil {
+				shutdownErr = fmt.Errorf("%v; failed to shutdown meter provider: %w", shutdownErr, err)
+			} else {
+				shutdownErr = fmt.Errorf("failed to shutdown meter provider: %w", err)
+			}
 		}
 	}
-
-	return nil
-}
-
-// UpDownCounter for values that can go up and down (like queue size, memory usage)
-func (c *OtelMetricHandler) UpDownCounter(ctx context.Context, metricName string, value int64, tags types.Tags) error {
-	upDownCounter, exists := c.upDownCounter[metricName]
-	if !exists {
-		var err error
-		upDownCounter, err = c.meter.Int64UpDownCounter(
-			metricName,
-			metric.WithDescription(fmt.Sprintf("UpDownCounter metric for %s", metricName)),
-		)
-		if err != nil {
-			return fmt.Errorf("failed to create up-down counter: %v", err)
-		}
-		c.upDownCounter[metricName] = upDownCounter
-	}
-
-	upDownCounter.Add(ctx, value, metric.WithAttributes(tags.ToAttributes()...))
-	return nil
-}
-
-// StartSpan creates a new span for tracing
-func (c *OtelMetricHandler) StartSpan(ctx context.Context, name string, tags types.Tags) (context.Context, trace.Span) {
-	ctx, span := c.tracer.Start(ctx, name)
-
-	// Add attributes to span
-	for _, tag := range tags {
-		span.SetAttributes(tag.ToAttribute())
-	}
-
-	return ctx, span
-}
-
-// RecordEvent records a span event with attributes
-func (c *OtelMetricHandler) RecordEvent(ctx context.Context, name string, tags types.Tags) {
-	span := trace.SpanFromContext(ctx)
-	if span.IsRecording() {
-		span.AddEvent(name, trace.WithAttributes(tags.ToAttributes()...))
-	}
+	return shutdownErr
 }

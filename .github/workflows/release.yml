@@ -54,3 +54,6 @@ jobs:
         args: release --clean
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Publish Package New Version
+      run: GOPROXY=proxy.golang.org go list -m github.com/raywall/code-service-pack@"$new_tag"

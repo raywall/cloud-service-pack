@@ -56,4 +56,4 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Publish Package New Version
-      run: GOPROXY=proxy.golang.org go list -m github.com/raywall/code-service-pack@"${{ steps.create_tag.outputs.new_tag }}"
+      run: GOPROXY=proxy.golang.org go list -m github.com/raywall/code-service-pack@${{ steps.create_tag.outputs.new_tag }}

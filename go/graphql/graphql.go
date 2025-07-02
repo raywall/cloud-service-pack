@@ -9,7 +9,8 @@ import (
 
 	"github.com/raywall/cloud-easy-connector/pkg/cloud"
 
-	"github.com/raywall/cloud-service-pack/go/auth"
+	auth "github.com/raywall/cloud-service-pack/go/authenticator"
+	"github.com/raywall/cloud-service-pack/go/authenticator/handlers"
 	"github.com/raywall/cloud-service-pack/go/graphql/graph"
 	"github.com/raywall/cloud-service-pack/go/graphql/types"
 )
@@ -18,11 +19,11 @@ import (
 const route string = "/graphql"
 
 type GraphQL struct {
-	AccessToken *string         `json:"token"`
-	token       auth.Handler    `json:"-"`
-	Config      types.Config    `json:"config"`
-	Resolver    *graph.Resolver `json:"resolver"`
-	Schema      *gp.Schema      `json:"schema"`
+	AccessToken *string              `json:"token"`
+	token       handlers.AuthHandler `json:"-"`
+	Config      types.Config         `json:"config"`
+	Resolver    *graph.Resolver      `json:"resolver"`
+	Schema      *gp.Schema           `json:"schema"`
 }
 
 func New(config *types.Config, resources *cloud.CloudContextList, region, endpoint string) (*GraphQL, error) {
@@ -104,16 +105,19 @@ func New(config *types.Config, resources *cloud.CloudContextList, region, endpoi
 			return nil, err
 		}
 
-		config.Token = auth.New(
-			authServiceUrl,
-			auth.TokenRequest{
-				ClientID:     clientID,
-				ClientSecret: clientSecret,
-			},
-			config.Authorization.TokenService.InsecureSkipVerify,
-			&config.AccessToken)
+		config.Authenticator = auth.NewAuthenticator(
+			handlers.NewSTSAuthHandler(
+				authServiceUrl,
+				&handlers.Credential{
+					ClientID:     clientID,
+					ClientSecret: clientSecret,
+				},
+				&handlers.Options{
+					InsecureSkipVerify: config.Authorization.TokenService.InsecureSkipVerify,
+				})).
+			WithController(&config.AccessToken)
 
-		if err := config.Token.Start(); err != nil {
+		if err := config.Authenticator.Start(); err != nil {
 			return nil, err
 		}
 	}

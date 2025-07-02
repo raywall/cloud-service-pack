@@ -36,8 +36,8 @@ func init() {
 			TokenService: types.TokenService{
 				TokenAuthorizationURL: "https://sts.teste.net/api/oauth/token",
 				Credentials: types.Credentials{
-					ClientID:     "aws::secrets::/graphql/dev/credentials::json",
-					ClientSecret: "aws::secrets::/graphql/dev/credentials::json",
+					ClientID:     "local::file::/Users/macmini/Documents/workspace/projetos/cloud-service-pack/examples/graphql/credentials.json::json",
+					ClientSecret: "local::file::/Users/macmini/Documents/workspace/projetos/cloud-service-pack/examples/graphql/credentials.json::json",
 				},
 				InsecureSkipVerify: false,
 			},
@@ -49,9 +49,9 @@ func init() {
 			Product:  "Product",
 		},
 		Metrics:    types.OpenTelemetryCollector,
-		Connectors: "local::file::/Users/macmini/Documents/workspace/projetos/cloud-service-pack/examples/config/graphql/connectors.json",
+		Connectors: "local::file::/Users/macmini/Documents/workspace/projetos/cloud-service-pack/examples/graphql/connectors.json",
 		Route:      "/graphql",
-		Schema:     "local::file::/Users/macmini/Documents/workspace/projetos/cloud-service-pack/examples/config/graphql/schema.json",
+		Schema:     "local::file::/Users/macmini/Documents/workspace/projetos/cloud-service-pack/examples/graphql/schema.json",
 	}
 
 	api, err = graphql.New(config, resources, "us-east-1", "http://localhost:4566")

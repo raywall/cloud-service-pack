@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/raywall/cloud-easy-connector/pkg/cloud"
-	"github.com/raywall/cloud-service-pack/go/auth"
+	auth "github.com/raywall/cloud-service-pack/go/authenticator"
 	"github.com/raywall/cloud-service-pack/go/data"
 )
 
@@ -93,8 +93,9 @@ type Config struct {
 	// Session is a AWS Session used by the service to interact with the cloud
 	Session *session.Session
 
-	// Token is a auto managed token, responsable for manage and mantains the token always updated
-	Token auth.Handler
+	// Authenticator is a authorization handler, responsable for authenticate
+	// the graphql API. If a self controlled token was created it mantains the token always updated.
+	Authenticator *auth.Authenticator
 
 	// AccessToken is the access token updated by the TokenManager
 	AccessToken string

@@ -2,3 +2,6 @@ examples/config/utils
 main
 .DS_Store
 .others
+.terraform/
+.terraform.*
+terraform.tfstate*
